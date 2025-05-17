@@ -27,6 +27,9 @@ namespace PlexSanitizer
             builder.Services.AddSingleton<IFileSystemService, FileSystemService>();
             builder.Services.AddSingleton<IMediaInfoService, MediaInfoService>();
             builder.Services.AddSingleton<IRenameService, RenameService>();
+            builder.Services.AddSingleton<IFolderSanitizerService, FolderSanitizerService>();
+            builder.Services.AddSingleton<IFilePickerService, FilePickerService>();
+            builder.Services.AddSingleton<IFolderDialogService, FolderDialogService>();
             builder.Services.AddHttpClient();
 
 
