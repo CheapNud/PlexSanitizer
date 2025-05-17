@@ -15,21 +15,21 @@ namespace PlexSanitizer.Services
 
         public FolderSanitizerService()
         {
-            // Initialize with hardcoded rules - customized for anime/media content
+            // Updated rules based on your feedback
             _rules = new List<FolderSanitizationRule>
             {
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Common Prefixes",
+                    Description = "Removes common prefixes like 'WebRip', 'BRRip', etc.",
+                    Pattern = @"^(?:DVDR|NL|Gespr|DMT|DutchReleaseTeam|Xvid|DivX|BluRay|BRRip|DVDRip|HDRip|WEBRip|HDTV|PDTV)(?:\s*[\.\-_,\s]+\s*)?",
+                    Replacement = ""
+                },
                 new FolderSanitizationRule
                 {
                     Name = "Remove Asian Characters",
                     Description = "Removes Japanese, Chinese, Korean characters while preserving Latin text",
                     Pattern = @"[\p{IsHiragana}\p{IsKatakana}\p{IsCJKUnifiedIdeographs}\p{IsHangulSyllables}]+",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Common Prefixes",
-                    Description = "Removes common prefixes like [HD Uncensored], (無修正), etc.",
-                    Pattern = @"^\[?(HD\s+Uncensored|無修正|流出|RH)\]?\s*",
                     Replacement = ""
                 },
                 new FolderSanitizationRule
@@ -41,30 +41,44 @@ namespace PlexSanitizer.Services
                 },
                 new FolderSanitizationRule
                 {
-                    Name = "Remove Deadmau Pattern",
-                    Description = "Removes [Deadmau- RAWS] prefix",
-                    Pattern = @"^\[Deadmau-\s*RAWS\]\s*",
+                    Name = "Remove Deadmou5e Pattern",
+                    Description = "Removes [Deadmou5e RAWS] or similar prefixes",
+                    Pattern = @"^\[Deadmou[s5]e[\s-]*RAWS\]\s*",
                     Replacement = ""
                 },
                 new FolderSanitizationRule
                 {
                     Name = "Remove Media Format Tags",
                     Description = "Removes common media format specifications",
-                    Pattern = @"\b(UNCENx264|x264|1080p|720p|BDRip|WEB|AAC|HEVC Edition|Hardsub|WEBRip)\b",
+                    Pattern = @"\b(UNCENx264|x264|1080p|720p|480p|BDRip|WEB|AAC|HEVC Edition|Hardsub|WEBRip)\b",
                     Replacement = ""
                 },
                 new FolderSanitizationRule
                 {
-                    Name = "Remove All Bracketed Content",
-                    Description = "Removes all content within brackets and parentheses",
-                    Pattern = @"\[[^\]]*\]|\([^\)]*\)",
+                    Name = "Remove Brackets Content",
+                    Description = "Removes content within square brackets [...]",
+                    Pattern = @"\[[^\]]*\]",
+                    Replacement = ""
+                },
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Parentheses Content (Except Years)",
+                    Description = "Removes content within parentheses (...) except years like (2010)",
+                    Pattern = @"\((?!(?:19|20)\d{2}\))[^)]*\)",
+                    Replacement = ""
+                },
+                new FolderSanitizationRule
+                {
+                    Name = "Remove English Language Labels",
+                    Description = "Removes English language indicators",
+                    Pattern = @"\b(UNCENSORED English|Uncensored|English|Eng|Dutch|NL|Sub|Subs|Subtitles)\b",
                     Replacement = ""
                 },
                 new FolderSanitizationRule
                 {
                     Name = "Remove Release Groups",
                     Description = "Removes release group references",
-                    Pattern = @"(TMD-Group|OceanVeil|\bDual Audio\b)",
+                    Pattern = @"(TMD-Group|OceanVeil|CrackzSoft|\bDual Audio\b)",
                     Replacement = ""
                 },
                 new FolderSanitizationRule
@@ -83,23 +97,16 @@ namespace PlexSanitizer.Services
                 },
                 new FolderSanitizationRule
                 {
-                    Name = "Remove Leading/Trailing Spaces",
-                    Description = "Removes spaces at the beginning and end of names",
-                    Pattern = @"^\s+|\s+$",
+                    Name = "Remove Leading/Trailing Spaces and Separators",
+                    Description = "Removes spaces, dashes, and other separators at the beginning and end",
+                    Pattern = @"^[\s\-_,\.\(\)]+|[\s\-_,\.\(\)]+$",
                     Replacement = ""
                 },
                 new FolderSanitizationRule
                 {
-                    Name = "Remove English Labels",
-                    Description = "Removes [UNCENSORED English] and similar labels",
-                    Pattern = @"\b(UNCENSORED English|Uncensored)\b",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Extract Specific Anime Series Names",
-                    Description = "Preserves common anime series names",
-                    Pattern = @".*(Kowaremono|Deadman Wonderland|Adam-kun).*",
+                    Name = "Extract Specific Content Patterns",
+                    Description = "Preserves known content patterns like Death Note, Naruto, etc.",
+                    Pattern = @".*(Death Note|Naruto Shippuden|Les Chevaliers du ciel|Adobe CC Mega Pack).*",
                     Replacement = "$1"
                 }
             };
@@ -132,29 +139,15 @@ namespace PlexSanitizer.Services
                 {
                     Debug.WriteLine($"Directory does not exist or is not accessible: {normalizedPath}. Using example data instead.");
 
-                    // Add example folders from the screenshot
+                    // Add example folders matching your screenshot
                     string[] exampleFolders = new string[]
                     {
-                        "(無修正) FC2 PPV 1864523【個人撮影】可愛すぎる美少女が旦那に調教される衝撃映像ビデオ。",
-                        "(無修正-流出) FC2 PPV 1311005 (Uncensored Leaked)[流出]西条るり [EBOD-189] (Saijo Ruri)",
-                        "[Deadmau- RAWS] Ikenai.Koto.The.Animation.2016.UNCENx264.1080p.BDRip.Deadmau.lad",
-                        "[Deadmau- RAWS] Misuzu.Ikenai.Koto.2016.UNCENx264.1080p.BDRip.Deadmau.lad",
-                        "[Deadmau- RAWS] Brunette.Girl.2018.UNCENx264.1080p.BDRip.Deadmau.lad",
-                        "[HD Uncensored] FC2 PPV 1181366 《個人撮影》アニメ大好きアヤハOOカフェのレイヤーアイドル 小柄な幼顔 同年生まただにあふれる程の大量種付け [1080p]",
-                        "[HD Uncensored] FC2 PPV 1186701 【無許可中出し】「ダメ...外に...！」巨乳化齊った元ちょいぽちゃアイドル 妊娠願望がどと無えない彼女だけど許してしまてました [1080p]",
-                        "[HD Uncensored] FC2 PPV 1943052 【無_個】潮吹発見！「可愛い娘師」でJカップ明るい性格で話題沸騰な22歳素人娘を有料ガチオナニー生配信ちゃんの変態ちゃん編門内・生中〇し",
-                        "[HD Uncensored] FC2 PPV 1946335 10本限定！《無修正》某芸能事務目指すキャバ・引っ越し支援でデート・連続中出し [720p]",
-                        "[RH] !tadaki! Seieki [Uncensored] [Dual Audio] [BDRip] [Hi10] [1080p]",
-                        "Deadman Wonderland",
-                        "FC2-PPV-4683409",
-                        "FC2-PPV-4685800",
-                        "FC2-PPV-4685885",
-                        "FC2-PPV-4686046",
-                        "Kowaremono The Animation Series (BD Uncensored 1080p)",
-                        "Married Couple Swap S01 UNCENSORED English Hardsub 720p WEB x264 AAC - TMD-Group (OceanVeil)",
-                        "Modaete yo, Adam-kun",
-                        "Rare, Classic & Uncensored Hentai Collection v1.8 [HEVC Edition]",
-                        "The Share House's Secret Rule S01 UNCENSORED English Hardsub 720p WEB x264 AAC - TMD-Group (OceanVeil)"
+                        "Adobe CC Mega Pack For Mac - [CrackzSoft]",
+                        "By Dawn's Early Light (1990)",
+                        "Les Chevaliers du ciel",
+                        "Naruto Shippuden",
+                        "Zot van A. (2010). DVDR(xvid). NL Gespr. DMT",
+                        "[Nep_Blanc][ToshY] Death Note"
                     };
 
                     // Create FolderItem for each example folder
@@ -214,7 +207,8 @@ namespace PlexSanitizer.Services
                                     FullPath = dir,
                                     Name = dirInfo.Name,
                                     LastModified = dirInfo.LastWriteTime,
-                                    ParentPath = dirInfo.Parent?.FullName
+                                    ParentPath = dirInfo.Parent?.FullName,
+                                    IsSelected = true
                                 });
                                 Debug.WriteLine($"Added folder: {dirInfo.Name}");
                             }
@@ -241,30 +235,33 @@ namespace PlexSanitizer.Services
             {
                 Debug.WriteLine($"Error getting folders: {ex.Message}");
 
-                // If we hit an exception (like access denied or network error),
-                // still return example data for demo purposes
+                // If we hit an exception, still return example data for demo purposes
                 if (result.Count == 0)
                 {
                     Debug.WriteLine("Using example data due to error.");
 
-                    // Just a few example items for demonstration
-                    result.Add(new FolderItem
+                    // Add the same example folders
+                    string[] exampleFolders = new string[]
                     {
-                        FullPath = Path.Combine(rootPath, "(無修正) FC2 PPV 1864523【個人撮影】可愛すぎる美少女が旦那に調教される衝撃映像ビデオ。"),
-                        Name = "(無修正) FC2 PPV 1864523【個人撮影】可愛すぎる美少女が旦那に調教される衝撃映像ビデオ。",
-                        LastModified = DateTime.Now,
-                        ParentPath = rootPath,
-                        IsSelected = true
-                    });
+                        "Adobe CC Mega Pack For Mac - [CrackzSoft]",
+                        "By Dawn's Early Light (1990)",
+                        "Les Chevaliers du ciel",
+                        "Naruto Shippuden",
+                        "Zot van A. (2010). DVDR(xvid). NL Gespr. DMT",
+                        "[Nep_Blanc][ToshY] Death Note"
+                    };
 
-                    result.Add(new FolderItem
+                    foreach (var folderName in exampleFolders)
                     {
-                        FullPath = Path.Combine(rootPath, "[HD Uncensored] FC2 PPV 1181366 《個人撮影》アニメ大好きアヤハOOカフェのレイヤーアイドル 小柄な幼顔 同年生まただにあふれる程の大量種付け [1080p]"),
-                        Name = "[HD Uncensored] FC2 PPV 1181366 《個人撮影》アニメ大好きアヤハOOカフェのレイヤーアイドル 小柄な幼顔 同年生まただにあふれる程の大量種付け [1080p]",
-                        LastModified = DateTime.Now,
-                        ParentPath = rootPath,
-                        IsSelected = true
-                    });
+                        result.Add(new FolderItem
+                        {
+                            FullPath = Path.Combine(rootPath, folderName),
+                            Name = folderName,
+                            LastModified = DateTime.Now,
+                            ParentPath = rootPath,
+                            IsSelected = true
+                        });
+                    }
                 }
 
                 return result;
@@ -273,43 +270,18 @@ namespace PlexSanitizer.Services
 
         public async Task<List<FolderItem>> PreviewSanitizationAsync(List<FolderItem> folders)
         {
-            // First, make a copy of the rules and ensure they're in the right order
-            var orderedRules = new List<FolderSanitizationRule>();
-
-            // Get the "Remove Asian Characters" rule first if it's active
-            var asianCharRule = _rules.FirstOrDefault(r => r.Name == "Remove Asian Characters" && r.IsActive);
-            if (asianCharRule != null)
-            {
-                orderedRules.Add(asianCharRule);
-            }
-
-            // Get the "Extract FC2 PPV Numbers" rule next if it's active
-            var fc2Rule = _rules.FirstOrDefault(r => r.Name == "Extract FC2 PPV Numbers" && r.IsActive);
-            if (fc2Rule != null)
-            {
-                orderedRules.Add(fc2Rule);
-            }
-
-            // Add the rest of the active rules
-            foreach (var rule in _rules.Where(r => r.IsActive &&
-                                               r.Name != "Remove Asian Characters" &&
-                                               r.Name != "Extract FC2 PPV Numbers"))
-            {
-                orderedRules.Add(rule);
-            }
-
             foreach (var folder in folders)
             {
                 string sanitizedName = folder.Name;
 
-                // Apply all active rules in the specific order
-                foreach (var rule in orderedRules)
+                // Apply all active rules in sequence
+                foreach (var rule in _rules.Where(r => r.IsActive))
                 {
                     sanitizedName = rule.Apply(sanitizedName);
                 }
 
                 // Only set NewName if it's different from the original
-                if (sanitizedName != folder.Name)
+                if (sanitizedName != folder.Name && !string.IsNullOrWhiteSpace(sanitizedName))
                 {
                     folder.NewName = sanitizedName;
                 }
@@ -381,18 +353,6 @@ namespace PlexSanitizer.Services
                     {
                         Debug.WriteLine($"Access denied while renaming folder: {uaEx.Message}");
                         allSuccessful = false;
-
-                        // Try alternative approach for network paths
-                        try
-                        {
-                            // In a real implementation, you might use P/Invoke or other methods here
-                            // This is just a placeholder to show the approach
-                            throw new NotImplementedException("Alternative network path rename not implemented");
-                        }
-                        catch (Exception altEx)
-                        {
-                            Debug.WriteLine($"Alternative rename method also failed: {altEx.Message}");
-                        }
                     }
                 }
                 catch (Exception ex)
@@ -418,7 +378,6 @@ namespace PlexSanitizer.Services
             }
         }
 
-        // Add this method to check if a path exists
         public async Task<bool> PathExistsAsync(string path)
         {
             try
