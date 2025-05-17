@@ -1,0 +1,72 @@
+﻿@inject IMediaInfoService MediaInfoService
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="FileInfo.MediaInfo.Title" Label="Title" Variant="Variant.Outlined" FullWidth="true" />
+            </MudItem>
+
+            @if (FileInfo.MediaType == MediaType.Movie)
+            {
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="FileInfo.MediaInfo.Year" Label="Year" Variant="Variant.Outlined" Min="1900" Max="2100" FullWidth="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="FileInfo.MediaInfo.Resolution" Label="Resolution" Variant="Variant.Outlined" FullWidth="true" />
+                </MudItem>
+            }
+            else if (FileInfo.MediaType == MediaType.TvShow)
+            {
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="FileInfo.MediaInfo.Season" Label="Season" Variant="Variant.Outlined" Min="1" Max="100" FullWidth="true" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="FileInfo.MediaInfo.Episode" Label="Episode" Variant="Variant.Outlined" Min="1" Max="1000" FullWidth="true" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="FileInfo.MediaInfo.Resolution" Label="Resolution" Variant="Variant.Outlined" FullWidth="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="FileInfo.MediaInfo.EpisodeTitle" Label="Episode Title" Variant="Variant.Outlined" FullWidth="true" />
+                </MudItem>
+            }
+
+            <MudItem xs="12">
+                <MudTextField @bind-Value="FileInfo.NewName" Label="New File Name" Variant="Variant.Outlined" FullWidth="true" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
+        <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="GenerateFileName">Generate</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public FileItem FileInfo { get; set; }
+
+    private async Task GenerateFileName()
+    {
+        // Generate new file name based on updated media info
+        string newFileName = MediaInfoService.GeneratePlexFileName(FileInfo.MediaInfo, FileInfo.MediaType);
+        newFileName += FileInfo.Extension;
+        FileInfo.NewName = newFileName;
+        FileInfo.NewPath = Path.Combine(FileInfo.Directory, newFileName);
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(FileInfo.NewName))
+        {
+            FileInfo.NewName = FileInfo.Name;
+        }
+
+        FileInfo.NewPath = Path.Combine(FileInfo.Directory, FileInfo.NewName);
+        MudDialog.Close(DialogResult.Ok(FileInfo));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
