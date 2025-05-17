@@ -1,4 +1,4 @@
-﻿namespace PlexRenamer
+﻿namespace PlexSanitizer
 {
     public partial class MainPage : ContentPage
     {

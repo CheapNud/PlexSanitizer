@@ -1,1 +1,1 @@
-# PlexRenamer
+# PlexSanitizer

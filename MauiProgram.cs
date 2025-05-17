@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 
-namespace PlexRenamer
+namespace PlexSanitizer
 {
     public static class MauiProgram
     {

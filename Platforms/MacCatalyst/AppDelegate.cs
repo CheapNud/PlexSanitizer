@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace PlexRenamer
+namespace PlexSanitizer
 {
     [Register("AppDelegate")]
     public class AppDelegate : MauiUIApplicationDelegate

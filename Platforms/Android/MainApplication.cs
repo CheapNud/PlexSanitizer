@@ -1,7 +1,7 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace PlexRenamer
+namespace PlexSanitizer
 {
     [Application]
     public class MainApplication : MauiApplication

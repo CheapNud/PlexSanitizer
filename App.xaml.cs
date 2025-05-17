@@ -1,4 +1,4 @@
-﻿namespace PlexRenamer
+﻿namespace PlexSanitizer
 {
     public partial class App : Application
     {
@@ -9,7 +9,7 @@
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new MainPage()) { Title = "PlexRenamer" };
+            return new Window(new MainPage()) { Title = "PlexSanitizer" };
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace PlexRenamer
+namespace PlexSanitizer
 {
     public class Program
     {
