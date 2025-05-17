@@ -1,5 +1,483 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+@using System.IO
 
-Welcome to your new app.
+@inject IFileSystemService FileSystemService
+@inject IRenameService RenameService
+@inject IMediaInfoService MediaInfoService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Plex Renamer</MudText>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <MudTabPanel Text="Rename Files">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h5" Class="mb-4">Select Source Folder</MudText>
+                        <MudGrid>
+                            <MudItem xs="9">
+                                <MudTextField @bind-Value="SourceFolder" Label="Source Folder" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="BrowseFolder" FullWidth="true">Browse</MudButton>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Class="my-4" />
+
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AnalyzeFiles" Disabled="@(string.IsNullOrEmpty(SourceFolder))" Class="mb-4">
+                            Analyze Files
+                        </MudButton>
+
+                        @if (IsLoading)
+                        {
+                            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                        }
+
+                        @if (Files != null && Files.Any())
+                        {
+                            <MudTable Items="@Files" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <ColGroup>
+                                    <col style="width: 50px;" />
+                                    <col style="width: 40%;" />
+                                    <col style="width: 40%;" />
+                                    <col style="width: 150px;" />
+                                    <col style="width: 100px;" />
+                                </ColGroup>
+                                <HeaderContent>
+                                    <MudTh>
+                                        <MudCheckBox @bind-Value="@SelectAll" Color="Color.Primary" />
+                                    </MudTh>
+                                    <MudTh>Original Name</MudTh>
+                                    <MudTh>New Name</MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Actions</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="">
+                                        <MudCheckBox @bind-Value="@context.IsSelected" Color="Color.Primary" />
+                                    </MudTd>
+                                    <MudTd DataLabel="Original Name">@context.Name</MudTd>
+                                    <MudTd DataLabel="New Name">
+                                        <MudHighlighter Text="@context.NewName" HighlightedText="@context.Name" />
+                                    </MudTd>
+                                    <MudTd DataLabel="Type">@context.MediaType</MudTd>
+                                    <MudTd DataLabel="Actions">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => EditFileName(context))" />
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+
+                            <MudPaper Class="d-flex justify-end pa-4 mt-2" Elevation="0">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyRenaming" Disabled="@(!Files.Any(f => f.IsSelected && f.HasChanges))">
+                                    Apply Renaming
+                                </MudButton>
+                            </MudPaper>
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+        
+        <MudTabPanel Text="Organize Folders">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h5" Class="mb-4">Select Source and Target Folders</MudText>
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="SourceFolder" Label="Source Folder" Variant="Variant.Outlined" 
+                                            Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder" 
+                                            FullWidth="true" Class="mb-4" />
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="BrowseFolder" FullWidth="false">Browse Source</MudButton>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="TargetFolder" Label="Target Folder" Variant="Variant.Outlined" 
+                                            Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Folder" 
+                                            FullWidth="true" Class="mb-4" />
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="BrowseTargetFolder" FullWidth="false">Browse Target</MudButton>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Class="my-4" />
+
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AnalyzeFiles" 
+                                Disabled="@(string.IsNullOrEmpty(SourceFolder))" Class="mb-4">
+                            Analyze Files
+                        </MudButton>
+
+                        @if (IsLoading)
+                        {
+                            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                        }
+
+                        @if (Files != null && Files.Any())
+                        {
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">Found @Files.Count() Files to Process</MudText>
+                            <MudTable Items="@Files" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <ColGroup>
+                                    <col style="width: 50px;" />
+                                    <col style="width: 30%;" />
+                                    <col style="width: 150px;" />
+                                    <col style="width: 30%;" />
+                                </ColGroup>
+                                <HeaderContent>
+                                    <MudTh>
+                                        <MudCheckBox @bind-Value="@SelectAll" Color="Color.Primary" />
+                                    </MudTh>
+                                    <MudTh>File Name</MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Target Path</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="">
+                                        <MudCheckBox @bind-Value="@context.IsSelected" Color="Color.Primary" />
+                                    </MudTd>
+                                    <MudTd DataLabel="File Name">@context.Name</MudTd>
+                                    <MudTd DataLabel="Type">@context.MediaType</MudTd>
+                                    <MudTd DataLabel="Target Path">
+                                        @{
+                                            var targetPath = GetTargetPath(context);
+                                        }
+                                        @targetPath
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+
+                            <MudPaper Class="d-flex justify-end pa-4 mt-2" Elevation="0">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OrganizeFolders" 
+                                        Disabled="@(!Files.Any(f => f.IsSelected) || string.IsNullOrEmpty(TargetFolder))">
+                                    Organize Folders
+                                </MudButton>
+                            </MudPaper>
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Settings">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h5" Class="mb-4">Naming Patterns</MudText>
+                        
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle1">Movie Pattern</MudText>
+                                <MudTextField @bind-Value="MoviePattern" Label="Movie Pattern" Variant="Variant.Outlined" 
+                                            HelperText="Example: {Title} ({Year}) [{Resolution}]" FullWidth="true" Class="mb-4" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle1">TV Show Pattern</MudText>
+                                <MudTextField @bind-Value="TvShowPattern" Label="TV Show Pattern" Variant="Variant.Outlined" 
+                                            HelperText="Example: {Title} - S{Season:00}E{Episode:00} - {EpisodeTitle} [{Resolution}]" FullWidth="true" Class="mb-4" />
+                            </MudItem>
+                        </MudGrid>
+                        
+                        <MudDivider Class="my-4" />
+                        
+                        <MudText Typo="Typo.h5" Class="mb-4">Folder Structure</MudText>
+                        
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle1">Movies Folder Structure</MudText>
+                                <MudTextField @bind-Value="MovieFolderPattern" Label="Movie Folder Pattern" Variant="Variant.Outlined" 
+                                            HelperText="Example: Movies/{Title} ({Year})" FullWidth="true" Class="mb-4" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle1">TV Shows Folder Structure</MudText>
+                                <MudTextField @bind-Value="TvShowFolderPattern" Label="TV Show Folder Pattern" Variant="Variant.Outlined" 
+                                            HelperText="Example: TV Shows/{Title}/Season {Season:00}" FullWidth="true" Class="mb-4" />
+                            </MudItem>
+                        </MudGrid>
+                        
+                        <MudDivider Class="my-4" />
+                        
+                        <MudPaper Class="d-flex justify-end pa-4 mt-2" Elevation="0">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings">
+                                Save Settings
+                            </MudButton>
+                        </MudPaper>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private string SourceFolder { get; set; } = string.Empty;
+    private string TargetFolder { get; set; } = string.Empty;
+    private List<FileItem> Files { get; set; } = new List<FileItem>();
+    private bool IsLoading { get; set; } = false;
+    private bool _selectAll;
+    
+    // Settings
+    private string MoviePattern { get; set; } = "{Title} ({Year}) [{Resolution}]";
+    private string TvShowPattern { get; set; } = "{Title} - S{Season:00}E{Episode:00} - {EpisodeTitle} [{Resolution}]";
+    private string MovieFolderPattern { get; set; } = "Movies/{Title} ({Year})";
+    private string TvShowFolderPattern { get; set; } = "TV Shows/{Title}/Season {Season:00}";
+
+    private bool SelectAll
+    {
+        get => _selectAll;
+        set
+        {
+            if (_selectAll != value)
+            {
+                _selectAll = value;
+                foreach (var file in Files)
+                {
+                    file.IsSelected = value;
+                }
+            }
+        }
+    }
+
+    private async Task BrowseFolder()
+    {
+        try
+        {
+            // In a real MAUI app, we'd use platform-specific folder picker
+            // For this demo, we'll just use a dialog to input the folder path
+            var parameters = new DialogParameters();
+            parameters.Add("ContentText", "Enter folder path:");
+            parameters.Add("ButtonText", "Select");
+            parameters.Add("Color", Color.Primary);
+
+            var dialog = await DialogService.ShowAsync<DialogFolderPicker>("Select Folder", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled && result.Data is string folderPath)
+            {
+                SourceFolder = folderPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error browsing folder: {ex.Message}");
+            Snackbar.Add("Error selecting folder", Severity.Error);
+        }
+    }
+
+    private async Task BrowseTargetFolder()
+    {
+        try
+        {
+            var parameters = new DialogParameters();
+            parameters.Add("ContentText", "Enter target folder path:");
+            parameters.Add("ButtonText", "Select");
+            parameters.Add("Color", Color.Primary);
+
+            var dialog = await DialogService.ShowAsync<DialogFolderPicker>("Select Target Folder", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled && result.Data is string folderPath)
+            {
+                TargetFolder = folderPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error browsing target folder: {ex.Message}");
+            Snackbar.Add("Error selecting target folder", Severity.Error);
+        }
+    }
+
+    private async Task AnalyzeFiles()
+    {
+        if (string.IsNullOrEmpty(SourceFolder))
+        {
+            Snackbar.Add("Please select a source folder", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            IsLoading = true;
+            Files = (await RenameService.AnalyzeFilesAsync(SourceFolder)).ToList();
+            
+            if (!Files.Any())
+            {
+                Snackbar.Add("No media files found in the selected folder", Severity.Info);
+            }
+            else
+            {
+                Snackbar.Add($"Found {Files.Count} media files", Severity.Success);
+                SelectAll = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing files: {ex.Message}");
+            Snackbar.Add("Error analyzing files", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task EditFileName(FileItem fileItem)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("FileItem", fileItem);
+
+        var dialog = await DialogService.ShowAsync<DialogEditFileName>("Edit File Name", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is FileItem updatedFileItem)
+        {
+            var index = Files.FindIndex(f => f.FullPath == updatedFileItem.FullPath);
+            if (index >= 0)
+            {
+                Files[index] = updatedFileItem;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ApplyRenaming()
+    {
+        var filesToRename = Files.Where(f => f.IsSelected && f.HasChanges).ToList();
+        
+        if (!filesToRename.Any())
+        {
+            Snackbar.Add("No files selected for renaming", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", $"Are you sure you want to rename {filesToRename.Count} files?");
+        parameters.Add("ButtonText", "Rename");
+        parameters.Add("Color", Color.Primary);
+
+        var dialog = await DialogService.ShowAsync<DialogConfirmation>("Confirm Renaming", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                IsLoading = true;
+                bool success = await RenameService.ApplyRenamingAsync(filesToRename);
+
+                if (success)
+                {
+                    Snackbar.Add("Files renamed successfully", Severity.Success);
+                    await AnalyzeFiles(); // Refresh file list
+                }
+                else
+                {
+                    Snackbar.Add("Some files could not be renamed", Severity.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error renaming files: {ex.Message}");
+                Snackbar.Add("Error renaming files", Severity.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private string GetTargetPath(FileItem fileItem)
+    {
+        string targetPath = string.Empty;
+
+        switch (fileItem.MediaType)
+        {
+            case MediaType.Movie:
+                string movieTitle = fileItem.MediaInfo.Title;
+                if (fileItem.MediaInfo.Year.HasValue)
+                {
+                    movieTitle += $" ({fileItem.MediaInfo.Year})";
+                }
+                targetPath = Path.Combine("Movies", movieTitle);
+                break;
+
+            case MediaType.TvShow:
+                string showTitle = fileItem.MediaInfo.Title;
+                string seasonFolder = fileItem.MediaInfo.Season.HasValue 
+                    ? $"Season {fileItem.MediaInfo.Season:D2}" 
+                    : "Season 01";
+                targetPath = Path.Combine("TV Shows", showTitle, seasonFolder);
+                break;
+
+            default:
+                targetPath = "Other";
+                break;
+        }
+
+        return targetPath;
+    }
+
+    private async Task OrganizeFolders()
+    {
+        if (string.IsNullOrEmpty(TargetFolder))
+        {
+            Snackbar.Add("Please select a target folder", Severity.Warning);
+            return;
+        }
+
+        var filesToOrganize = Files.Where(f => f.IsSelected).ToList();
+        
+        if (!filesToOrganize.Any())
+        {
+            Snackbar.Add("No files selected for organizing", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", $"Are you sure you want to organize {filesToOrganize.Count} files into folders in {TargetFolder}?");
+        parameters.Add("ButtonText", "Organize");
+        parameters.Add("Color", Color.Primary);
+
+        var dialog = await DialogService.ShowAsync<DialogConfirmation>("Confirm Organization", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                IsLoading = true;
+                bool success = await RenameService.OrganizeFoldersAsync(filesToOrganize, TargetFolder);
+
+                if (success)
+                {
+                    Snackbar.Add("Files organized successfully", Severity.Success);
+                    Files.Clear(); // Clear file list after organizing
+                    StateHasChanged();
+                }
+                else
+                {
+                    Snackbar.Add("Some files could not be organized", Severity.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error organizing files: {ex.Message}");
+                Snackbar.Add("Error organizing files", Severity.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private void SaveSettings()
+    {
+        // In a real app, we would save these settings to disk
+        Snackbar.Add("Settings saved", Severity.Success);
+    }
+}
