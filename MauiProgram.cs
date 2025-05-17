@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 
 namespace PlexRenamer
 {
@@ -14,6 +15,7 @@ namespace PlexRenamer
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 });
 
+            builder.Services.AddHttpClient();
             builder.Services.AddMauiBlazorWebView();
 
 #if DEBUG
@@ -21,6 +23,7 @@ namespace PlexRenamer
     		builder.Logging.AddDebug();
 #endif
 
+            builder.Services.AddMudServices();
             return builder.Build();
         }
     }
