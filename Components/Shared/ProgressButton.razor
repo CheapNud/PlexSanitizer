@@ -1,0 +1,121 @@
+﻿<MudButton @attributes="@CapturedAttributes"
+           HtmlTag="@HtmlTag"
+           Class="@Class"
+           Variant="@Variant"
+           Color="@Color"
+           OnClick="Clicked"
+           StartIcon="@StartIcon"
+           Size="@Size"
+           FullWidth=@FullWidth
+           Disabled=@processing
+           Ripple=@(!processing)
+           for="@For">
+    @if (processing)
+    {
+        <MudProgressCircular Class="ms-n1" Size="MudBlazor.Size.Small" Indeterminate="true" />
+        <MudText Class="ms-2">@LoadingText</MudText>
+    }
+    else
+    {
+        @ButtonText
+    }
+</MudButton>
+
+@if (errorMessage != null)
+{
+    <MudText Color="Color.Error" Class="mt-2">@errorMessage</MudText>
+}
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> CapturedAttributes { get; set; }
+    [Parameter]
+    public string Class { get; set; }
+    [Parameter]
+    public string ButtonText { get; set; }
+    [Parameter]
+    public string LoadingText { get; set; } = "Bezig";
+    [Parameter]
+    public string HtmlTag { get; set; }
+    [Parameter]
+    public string For { get; set; }
+    [Parameter]
+    public bool FullWidth { get; set; } = false;
+    [Parameter]
+    public string StartIcon { get; set; }
+    [EditorRequired]
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter]
+    public MudBlazor.Color Color { get; set; } = Color.Primary;
+    [Parameter]
+    public MudBlazor.Variant Variant { get; set; } = Variant.Filled;
+    [Parameter]
+    public MudBlazor.Size Size { get; set; } = Size.Medium;
+    [Parameter]
+    public int TimeoutMilliseconds { get; set; } = 30000; // Default 30 second timeout
+    [Parameter]
+    public EventCallback<Exception> OnError { get; set; }
+    [Parameter]
+    public bool ShowErrorMessage { get; set; } = true;
+
+    private bool processing = false;
+    private string errorMessage = null;
+    private CancellationTokenSource timeoutCts;
+
+    private async Task Clicked(MouseEventArgs args)
+    {
+        if (processing) return;
+
+        processing = true;
+        errorMessage = null;
+
+        try
+        {
+            // Set up timeout cancellation
+            timeoutCts = new CancellationTokenSource();
+            var timeoutTask = Task.Delay(TimeoutMilliseconds, timeoutCts.Token);
+
+            // Create a task for the click handler
+            var clickTask = OnClick.InvokeAsync(args);
+
+            // Wait for either the click handler to complete or timeout
+            var completedTask = await Task.WhenAny(clickTask, timeoutTask);
+
+            if (completedTask == timeoutTask && !timeoutTask.IsCanceled)
+            {
+                throw new TimeoutException($"Operation timed out after {TimeoutMilliseconds / 1000} seconds");
+            }
+
+            // Make sure the click task completes successfully
+            await clickTask;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in LoadingButton: {ex.Message}");
+
+            if (ShowErrorMessage)
+            {
+                errorMessage = ex.Message;
+            }
+
+            // Notify parent component about the error
+            await OnError.InvokeAsync(ex);
+        }
+        finally
+        {
+            // Cancel timeout if it's still running
+            if (timeoutCts != null && !timeoutCts.IsCancellationRequested)
+            {
+                timeoutCts.Cancel();
+            }
+
+            processing = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        timeoutCts?.Dispose();
+    }
+}

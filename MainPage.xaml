@@ -3,8 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:PlexRenamer"
              xmlns:components="clr-namespace:PlexRenamer.Components"
-             x:Class="PlexRenamer.MainPage">
-
+             x:Class="PlexRenamer.MainPage"
+          
+    >
+    <!--BackgroundColor="{DynamicResource PageBackgroundColor}"-->
     <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
         <BlazorWebView.RootComponents>
             <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
