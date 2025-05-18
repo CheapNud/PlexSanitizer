@@ -15,101 +15,7 @@ namespace PlexSanitizer.Services
 
         public FolderSanitizerService()
         {
-            // Updated rules based on your feedback
-            _rules = new List<FolderSanitizationRule>
-            {
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Common Prefixes",
-                    Description = "Removes common prefixes like 'WebRip', 'BRRip', etc.",
-                    Pattern = @"^(?:DVDR|NL|Gespr|DMT|DutchReleaseTeam|Xvid|DivX|BluRay|BRRip|DVDRip|HDRip|WEBRip|HDTV|PDTV)(?:\s*[\.\-_,\s]+\s*)?",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Asian Characters",
-                    Description = "Removes Japanese, Chinese, Korean characters while preserving Latin text",
-                    Pattern = @"[\p{IsHiragana}\p{IsKatakana}\p{IsCJKUnifiedIdeographs}\p{IsHangulSyllables}]+",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Extract FC2 PPV Numbers",
-                    Description = "Keeps only the FC2 PPV identifier with numbers",
-                    Pattern = @"(FC2[\s-]*PPV[\s-]*\d+).*",
-                    Replacement = "$1"
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Deadmou5e Pattern",
-                    Description = "Removes [Deadmou5e RAWS] or similar prefixes",
-                    Pattern = @"^\[Deadmou[s5]e[\s-]*RAWS\]\s*",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Media Format Tags",
-                    Description = "Removes common media format specifications",
-                    Pattern = @"\b(UNCENx264|x264|1080p|720p|480p|BDRip|WEB|AAC|HEVC Edition|Hardsub|WEBRip)\b",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Brackets Content",
-                    Description = "Removes content within square brackets [...]",
-                    Pattern = @"\[[^\]]*\]",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Parentheses Content (Except Years)",
-                    Description = "Removes content within parentheses (...) except years like (2010)",
-                    Pattern = @"\((?!(?:19|20)\d{2}\))[^)]*\)",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove English Language Labels",
-                    Description = "Removes English language indicators",
-                    Pattern = @"\b(UNCENSORED English|Uncensored|English|Eng|Dutch|NL|Sub|Subs|Subtitles)\b",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Release Groups",
-                    Description = "Removes release group references",
-                    Pattern = @"(TMD-Group|OceanVeil|CrackzSoft|\bDual Audio\b)",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Replace Periods and Underscores",
-                    Description = "Replaces periods and underscores with spaces",
-                    Pattern = @"[_\.]",
-                    Replacement = " "
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Replace Multiple Spaces",
-                    Description = "Replaces multiple spaces with a single space",
-                    Pattern = @"\s+",
-                    Replacement = " "
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Remove Leading/Trailing Spaces and Separators",
-                    Description = "Removes spaces, dashes, and other separators at the beginning and end",
-                    Pattern = @"^[\s\-_,\.\(\)]+|[\s\-_,\.\(\)]+$",
-                    Replacement = ""
-                },
-                new FolderSanitizationRule
-                {
-                    Name = "Extract Specific Content Patterns",
-                    Description = "Preserves known content patterns like Death Note, Naruto, etc.",
-                    Pattern = @".*(Death Note|Naruto Shippuden|Les Chevaliers du ciel|Adobe CC Mega Pack).*",
-                    Replacement = "$1"
-                }
-            };
+            _rules = GetAbsoluteSeriesScannerRules();
         }
 
         public async Task<List<FolderItem>> GetFoldersAsync(string rootPath)
@@ -131,7 +37,7 @@ namespace PlexSanitizer.Services
                 string normalizedPath = NormalizePath(rootPath);
                 Debug.WriteLine($"Normalized path: {normalizedPath}");
 
-                // Check if path exists using our public method
+                // Check if path exists
                 bool pathExists = await PathExistsAsync(normalizedPath);
                 Debug.WriteLine($"Path exists check result: {pathExists}");
 
@@ -139,7 +45,7 @@ namespace PlexSanitizer.Services
                 {
                     Debug.WriteLine($"Directory does not exist or is not accessible: {normalizedPath}. Using example data instead.");
 
-                    // Add example folders matching your screenshot
+                    // Add example folders for demonstration
                     string[] exampleFolders = new string[]
                     {
                         "Adobe CC Mega Pack For Mac - [CrackzSoft]",
@@ -150,7 +56,6 @@ namespace PlexSanitizer.Services
                         "[Nep_Blanc][ToshY] Death Note"
                     };
 
-                    // Create FolderItem for each example folder
                     foreach (var folderName in exampleFolders)
                     {
                         result.Add(new FolderItem
@@ -189,11 +94,10 @@ namespace PlexSanitizer.Services
                         catch (Exception ex2)
                         {
                             Debug.WriteLine($"Both methods failed to get directories: {ex2.Message}");
-                            throw; // Rethrow to handle in the catch block below
+                            throw;
                         }
                     }
 
-                    // Check if we actually got the folder list
                     if (directories != null)
                     {
                         Debug.WriteLine($"Processing {directories.Length} directories");
@@ -240,7 +144,6 @@ namespace PlexSanitizer.Services
                 {
                     Debug.WriteLine("Using example data due to error.");
 
-                    // Add the same example folders
                     string[] exampleFolders = new string[]
                     {
                         "Adobe CC Mega Pack For Mac - [CrackzSoft]",
@@ -338,7 +241,6 @@ namespace PlexSanitizer.Services
                         continue;
                     }
 
-                    // Some additional logging for network paths
                     Debug.WriteLine($"Attempting to rename: {folder.FullPath} -> {newPath}");
 
                     try
@@ -370,6 +272,215 @@ namespace PlexSanitizer.Services
             return _rules;
         }
 
+        private List<FolderSanitizationRule> GetAbsoluteSeriesScannerRules()
+        {
+            return new List<FolderSanitizationRule>
+            {
+                // Rule 1: Remove common release prefixes
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Release Prefixes",
+                    Description = "Removes common release prefixes while preserving content",
+                    Pattern = @"^(?:DVDR?|NL\s*Gespr|DMT|DutchReleaseTeam|Xvid|DivX|BluRay|BRRip|DVDRip|HDRip|WEBRip|HDTV|PDTV|BDRip)(?:\s*[\.\-_]+\s*)?",
+                    Replacement = ""
+                },
+
+                // Rule 2: Preserve and clean forced IDs (CRITICAL for ASS)
+                new FolderSanitizationRule
+                {
+                    Name = "Preserve Forced IDs",
+                    Description = "Preserves {anidb-123}, {tvdb-456} style IDs while cleaning around them",
+                    Pattern = @"^(.*?)(\s*\{(?:anidb|tvdb|anidb2|anidb3|anidb4|tvdb2|tvdb3|tvdb4|tvdb5|tmdb|tsdb|imdb|youtube|youtube2)-\d+\})\s*(.*)$",
+                    Replacement = "$1 $2"
+                },
+
+                // Rule 3: Handle FC2 PPV content specifically
+                new FolderSanitizationRule
+                {
+                    Name = "Clean FC2 PPV Content",
+                    Description = "Extracts FC2 PPV identifier while removing extra text",
+                    Pattern = @"^.*?(FC2[\s\-]*PPV[\s\-]*\d+).*$",
+                    Replacement = "$1"
+                },
+
+                // Rule 4: Convert bracketed years to parentheses and handle year ranges
+                new FolderSanitizationRule
+                {
+                    Name = "Fix Year Brackets and Handle Year Ranges",
+                    Description = "Converts [YYYY] to (YYYY), takes start year from ranges like (2004-2007) -> (2004), and removes technical specs in brackets",
+                    Pattern = @"\[((19|20)\d{2})\]|\(((19|20)\d{2})-((19|20)\d{2})\)|\[(?![A-Za-z_\s]*$)[^\]]*\]",
+                    Replacement = "($1$3)"
+                },
+
+                // Rule 5: Remove technical specifications in parentheses (except years)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Technical Parentheses",
+                    Description = "Removes technical specs in parentheses while preserving years",
+                    Pattern = @"\((?!(?:19|20)\d{2}\))[^)]*\)",
+                    Replacement = ""
+                },
+
+                // Rule 6: Remove codec and quality specifications (enhanced)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Codec/Quality Specs",
+                    Description = "Removes video/audio codec and quality specifications",
+                    Pattern = @"\b(?:UNCENx264|x264|x265|H\.?264|H\.?265|HEVC|AVC|10bit|8bit|AAC|AC3|EAC3|DDP5\.?1?|DD5\.?1?|DTS|Atmos|5\.1|2\.0|1080p|720p|480p|2160p|4K|WEB-?DL|NF|HULU|BluRay|BRRip|WEBRip|HDRip|DVDRip|COMPLETE|Mixed|DSNP|(?:H|x)\.?264|ITA|SWE|AMZN|REPACK|HMAX|WEBDL|NHTFS)\b",
+                    Replacement = ""
+                },
+
+                // Rule 7: Remove release group tags (enhanced with even more groups)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Release Groups",
+                    Description = "Removes common release group tags in brackets and at end of names",
+                    Pattern = @"[\[\(](?:TMD-Group|OceanVeil|CrackzSoft|YTS\.(?:MX|AM|LT)|RARBG|YIFY|Silence|Kappa|NTb|Atmos|Deadmauvlad|RCVR|SuccessfulCrab|NVEnc|TGx|rartv|XEBEC|PECULATE|Vyndros|KONTRAST|PHDTeam|MoviesMod|HANDJOB|SMURF|StereotypedGazelleOfWondrousPassion|TÅoE|HxD|ImE|MeM|GP)[\]\)]|[-\.\s]+(?:TMD-Group|OceanVeil|CrackzSoft|YTS\.(?:MX|AM|LT)|RARBG|YIFY|Silence|Kappa|NTb|Atmos|Deadmauvlad|RCVR|SuccessfulCrab|NVEnc|TGx|rartv|XEBEC|PECULATE|Vyndros|KONTRAST|PHDTeam|MoviesMod|HANDJOB|SMURF|StereotypedGazelleOfWondrousPassion|TÅoE|HxD|ImE|MeM|GP)$",
+                    Replacement = ""
+                },
+
+                // Rule 7b: Remove additional release group patterns (enhanced)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Additional Release Groups",
+                    Description = "Removes release groups that appear at the end without brackets",
+                    Pattern = @"\s*[-\.\s]*(?:SuccessfulCrab|XEBEC|PECULATE|NTb|TGx|rartv|Vyndros|English\s*Subs?|KONTRAST|PHDTeam|MoviesMod|HANDJOB|Swedish\s*Msubs|SMURF|StereotypedGazelleOfWondrousPassion|TÅoE|HxD|ImE|MeM|GP)\s*$",
+                    Replacement = ""
+                },
+
+                // Rule 8: Clean season/series information and release tags for top-level folders (enhanced)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Top-Level Season Info and Tags",
+                    Description = "Removes season info and trailing tags from top-level folders",
+                    Pattern = @"\b(?:Complete\s+)?(?:Series|Collection|(?:Season\s*\d+(?:\s*\-?\s*\d+)?|S\d+(?:-S\d+)?(?:E\d+)?|\d+\s*seasons?|Season\s*\d+\-\d+))(?:\s*\+?\s*Extras?)?\b|[-\.\s]+(?:Complete\s+Collection|The\s+Complete\s+Collection)$|\s*\[complete\]|\s*Season\s*\d+\s*\[complete\]",
+                    Replacement = ""
+                },
+
+                // Rule 9: Remove language and subtitle indicators (final enhancement)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Language Indicators",
+                    Description = "Removes language and subtitle indicators",
+                    Pattern = @"\b(?:UNCENSORED\s*)?(?:English|Eng|Dutch|NL|Swedish|Danish|Subs?|Subtitles|Hardsub|Msubs|optional\s*Eng\s*subs?|SweSub|EngSub)(?:\s+(?:Hardsub|Msubs|subs?))?\b",
+                    Replacement = ""
+                },
+
+                // Rule 10: Remove Asian characters (disabled by default)
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Asian Characters",
+                    Description = "Removes Japanese/Chinese/Korean characters (use carefully for anime)",
+                    Pattern = @"[\p{IsHiragana}\p{IsKatakana}\p{IsCJKUnifiedIdeographs}\p{IsHangulSyllables}]+",
+                    Replacement = "",
+                    IsActive = false
+                },
+
+                // Rule 11: Remove file size and edition indicators
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Size/Edition Info",
+                    Description = "Removes file size and edition indicators",
+                    Pattern = @"\b(?:\d+(?:\.\d+)?(?:GB|MB)|Edition|Remastered|Director.?s?\s*Cut|Extended|Uncut|Unrated)\b",
+                    Replacement = ""
+                },
+
+                // Rule 12: Handle special characters
+                new FolderSanitizationRule
+                {
+                    Name = "Clean Special Characters",
+                    Description = "Cleans special characters while preserving essential ones",
+                    Pattern = @"[ːø]",
+                    Replacement = ""
+                },
+
+                // Rule 13: Replace separators with spaces
+                new FolderSanitizationRule
+                {
+                    Name = "Replace Separators",
+                    Description = "Replaces dots, underscores with spaces",
+                    Pattern = @"[\._]+",
+                    Replacement = " "
+                },
+
+                // Rule 14: Clean up multiple spaces
+                new FolderSanitizationRule
+                {
+                    Name = "Clean Multiple Spaces",
+                    Description = "Replaces multiple spaces with single space",
+                    Pattern = @"\s{2,}",
+                    Replacement = " "
+                },
+
+                // Rule 15: Remove leading/trailing spaces and separators
+                new FolderSanitizationRule
+                {
+                    Name = "Trim Spaces and Separators",
+                    Description = "Removes leading/trailing spaces and separators",
+                    Pattern = @"^[\s\-_,\.]+|[\s\-_,\.]+$",
+                    Replacement = ""
+                },
+
+                // Rule 16: Extract known series patterns (more conservative)
+                new FolderSanitizationRule
+                {
+                    Name = "Extract Known Series",
+                    Description = "Preserves known series names (disabled by default - add your own patterns)",
+                    Pattern = @".*(Death Note|Naruto Shippuden|Dragon Ball|One Piece|Bleach|Attack on Titan|Sword Art Online|My Hero Academia|Demon Slayer|Jujutsu Kaisen).*",
+                    Replacement = "$1",
+                    IsActive = false // Disabled by default - can be too aggressive
+                },
+
+                // Rule 17: Fix title spacing (more conservative)
+                new FolderSanitizationRule
+                {
+                    Name = "Fix Title Spacing",
+                    Description = "Fixes spacing issues in compound words (disabled by default - can be aggressive)",
+                    Pattern = @"\b([a-z])([A-Z])",
+                    Replacement = "$1 $2",
+                    IsActive = false // Disabled by default as it can split words incorrectly
+                },
+
+                // Rule 18: Don't force year parentheses (they should already be handled)
+                new FolderSanitizationRule
+                {
+                    Name = "Clean Standalone Years",
+                    Description = "Removes standalone years that aren't in parentheses",
+                    Pattern = @"^\s*(19|20)\d{2}\s*$",
+                    Replacement = "",
+                    IsActive = false // Usually we want to keep years
+                },
+
+                // Rule 20: Final cleanup - remove empty brackets/parentheses
+                new FolderSanitizationRule
+                {
+                    Name = "Remove Empty Brackets",
+                    Description = "Removes empty brackets and parentheses left after cleaning",
+                    Pattern = @"\[\s*\]|\(\s*\)",
+                    Replacement = ""
+                },
+
+                // Rule 21: Clean trailing technical remnants (final enhancement)
+                new FolderSanitizationRule
+                {
+                    Name = "Clean Trailing Technical Remnants",
+                    Description = "Removes technical remnants and incomplete words at the end",
+                    Pattern = @"\s*[-\.\s]*(?:WEB|NTb|TGx|SuccessfulCrab|XEBEC|PECULATE|KONTRAST|PHDTeam|MoviesMod|HANDJOB|Animated\s*TV|Complete\s*Animated\s*TV\s*Series|SMURF|StereotypedGazelleOfWondrousPassion|TÅoE|HxD|ImE|MeM|GP|ITA|SWE|LITTLEBLUEMAN|NHTFS|HazMatt|HIQVE|EDITH|DANISH|EDGE2020|TheSickle|RAV1NE|EnlaHD|GalaxyTV|Justiso|NTG|RVKD|RICK|BadRips|\-\d{2}|SweSub|EngSub|AV1|Opus)\s*$",
+                    Replacement = ""
+                },
+
+                // Rule 22: Clean grouping indicators (disabled by default)
+                new FolderSanitizationRule
+                {
+                    Name = "Clean Grouping Indicators",
+                    Description = "Cleans grouping folder indicators while preserving structure",
+                    Pattern = @"\b(?:Part|Pt|Arc|Saga|Story)\s*\d+\b",
+                    Replacement = "",
+                    IsActive = false
+                }
+            };
+        }
+
         public void ToggleRule(int index, bool isActive)
         {
             if (index >= 0 && index < _rules.Count)
@@ -382,23 +493,19 @@ namespace PlexSanitizer.Services
         {
             try
             {
-                // Normalize the path for cross-platform compatibility
+                // Normalize the path
                 string normalizedPath = NormalizePath(path);
-
                 Debug.WriteLine($"Checking if path exists: {normalizedPath}");
 
-                // For network paths, use our special helper
+                // For network paths, use the network helper
                 if (IsNetworkPath(normalizedPath))
                 {
                     Debug.WriteLine($"Detected network path: {normalizedPath}");
-
-                    // Try to use the Network Access Helper for better network access
                     bool isAccessible = NetworkAccessHelper.IsNetworkPathAccessible(normalizedPath);
                     Debug.WriteLine($"Network path accessibility check result: {isAccessible}");
 
                     if (!isAccessible && normalizedPath.StartsWith("\\\\"))
                     {
-                        // If UNC path is not accessible, try to connect to it
                         Debug.WriteLine($"Attempting to connect to UNC path: {normalizedPath}");
                         bool connected = NetworkAccessHelper.ConnectToNetworkShare(normalizedPath);
                         Debug.WriteLine($"Connection attempt result: {connected}");
@@ -443,118 +550,42 @@ namespace PlexSanitizer.Services
 
         private bool IsNetworkPath(string path)
         {
-            // Check if this is a network path (UNC or drive letter)
-            return path.StartsWith("\\\\") ||
-                  (path.Length >= 2 && path[1] == ':' &&
-                   (char.ToUpper(path[0]) == 'Z' || char.ToUpper(path[0]) == 'Y'));
+            // Check if this is a network path (UNC or mapped drive)
+            return path.StartsWith("\\\\") || NetworkAccessHelper.IsMappedDrive(path);
         }
 
         private string NormalizePath(string path)
         {
             Debug.WriteLine($"Normalizing path: {path}");
 
-            // Handle null or empty paths
             if (string.IsNullOrEmpty(path))
                 return path;
 
             // Trim whitespace
             path = path.Trim();
 
-            // Special handling for Z:\New specifically
-            if (path.Equals("Z:\\New", StringComparison.OrdinalIgnoreCase) ||
-                path.Equals("Z:/New", StringComparison.OrdinalIgnoreCase) ||
-                path.Equals("Z:\\New\\", StringComparison.OrdinalIgnoreCase))
-            {
-                // Hard-coded UNC path for this specific folder
-                string hardcodedPath = "\\\\BRECHT-SERVER\\share\\New";
-                Debug.WriteLine($"Using hardcoded UNC path for Z:\\New: {hardcodedPath}");
-                return hardcodedPath;
-            }
-
-            // Try to resolve drive letter to UNC path for network shares
+            // Try to resolve mapped drives using the NetworkAccessHelper
             if (path.Length >= 2 && path[1] == ':')
             {
-                // Check if this looks like a network drive (typically Z: or similar)
-                char driveLetter = path[0];
-                if (char.ToUpper(driveLetter) == 'Z' || char.ToUpper(driveLetter) == 'Y')
+                string uncPath = NetworkAccessHelper.GetUNCPath(path);
+                if (!string.IsNullOrEmpty(uncPath))
                 {
-                    string uncPath = NetworkAccessHelper.GetUNCPath(path);
-                    if (!string.IsNullOrEmpty(uncPath))
-                    {
-                        Debug.WriteLine($"Resolved drive letter to UNC path: {path} -> {uncPath}");
-                        return uncPath;
-                    }
-                    else
-                    {
-                        // Fallback for Z: drive if resolution failed
-                        if (char.ToUpper(driveLetter) == 'Z')
-                        {
-                            string basePath = "\\\\BRECHT-SERVER\\share";
-                            if (path.Length > 2)
-                            {
-                                string relativePath = path.Substring(2);
-                                if (!relativePath.StartsWith("\\"))
-                                    relativePath = "\\" + relativePath;
-
-                                basePath += relativePath;
-                            }
-
-                            Debug.WriteLine($"Using fallback UNC path for Z: drive: {basePath}");
-                            return basePath;
-                        }
-                    }
-                }
-            }
-
-            // Handle special case for network paths that include the server name
-            if (path.Contains("\\\\BRECHT-SERVER") || path.Contains("Storage (\\BRECHT-SERVER)"))
-            {
-                // Extract drive letter if present
-                if (path.Contains("(Z)") || path.EndsWith("(Z)") || path.Contains("(Z)\\"))
-                {
-                    Debug.WriteLine($"Detected server path with drive mapping: {path}");
-
-                    // Direct UNC path construction
-                    string uncPath = "\\\\BRECHT-SERVER\\share";
-
-                    // Add subfolder if present
-                    if (path.EndsWith("New") || path.EndsWith("New\\"))
-                    {
-                        uncPath = Path.Combine(uncPath, "New");
-                    }
-                    else if (path.Contains("\\New\\"))
-                    {
-                        // Extract everything after "New\"
-                        int newIndex = path.IndexOf("\\New\\");
-                        if (newIndex >= 0 && newIndex + 5 < path.Length)
-                        {
-                            uncPath = Path.Combine(uncPath, "New", path.Substring(newIndex + 5));
-                        }
-                        else
-                        {
-                            uncPath = Path.Combine(uncPath, "New");
-                        }
-                    }
-
-                    Debug.WriteLine($"Final UNC path: {uncPath}");
+                    Debug.WriteLine($"Resolved drive letter to UNC path: {path} -> {uncPath}");
                     return uncPath;
                 }
             }
 
-            // Handle UNC paths
+            // Handle UNC paths (already normalized)
             if (path.StartsWith("\\\\"))
             {
-                // Already a UNC path, just return it
                 Debug.WriteLine($"Path is already in UNC format: {path}");
                 return path;
             }
 
-            // Handle network drives
+            // Handle local drive paths
             if (path.Length >= 2 && path[1] == ':')
             {
-                char driveLetter = path[0];
-                // Make sure the path is correctly formatted with backslash
-                // after drive letter if needed
+                // Ensure proper formatting
                 if (path.Length == 2)
                 {
                     return path + "\\";
@@ -565,19 +596,17 @@ namespace PlexSanitizer.Services
                     return path.Substring(0, 2) + "\\" + path.Substring(2);
                 }
 
-                // Regular drive letter path, return as is
-                Debug.WriteLine($"Regular drive path: {path}");
+                Debug.WriteLine($"Local drive path: {path}");
                 return path;
             }
 
-            // Handle path with forward slashes
+            // Handle forward slashes
             if (path.Contains("/"))
             {
                 Debug.WriteLine($"Converting forward slashes to backslashes: {path}");
                 return path.Replace("/", "\\");
             }
 
-            // Path is probably fine as is
             return path;
         }
     }
