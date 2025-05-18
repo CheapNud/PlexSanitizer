@@ -5,17 +5,38 @@
 @using PlexSanitizer.Services
 
 @inject IFolderSanitizerService FolderSanitizerService
+@inject IRenameService RenameService
 @inject IDialogService DialogService
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Plex Folder Sanitizer</MudText>
+    <MudText Typo="Typo.h5" Class="mb-4">Plex Sanitizer</MudText>
 
     <MudGrid>
         <MudItem xs="12">
             <MudPaper Class="pa-4">
-                <MudText Typo="Typo.h5" Class="mb-4">Select Source Folder</MudText>
+                <MudText Typo="Typo.h6" Class="mb-4">Select Source and Mode</MudText>
+                
+                <!-- Mode Selection -->
+                <MudToggleGroup T="string" @bind-Value="@SelectedMode" Color="Color.Primary" Class="mb-4">
+                    <MudToggleItem Value="@("folders")" Text="Folders Only" />
+                    <MudToggleItem Value="@("files")" Text="Files and Folders" />
+                </MudToggleGroup>
+
                 <MudAlert Severity="Severity.Info" Class="mb-4">
                     <MudText Typo="Typo.body2">
+                        <strong>@(SelectedMode == "folders" ? "Folder Mode:" : "File Mode:")</strong><br />
+                        @if (SelectedMode == "folders")
+                        {
+                            <text>• Renames folders using sanitization rules<br />
+                            • Good for cleaning up downloaded content folder names</text>
+                        }
+                        else
+                        {
+                            <text>• Renames both files and folders for Plex compatibility<br />
+                            • Parses movie/TV show information from filenames<br />
+                            • Generates Plex-standard naming conventions</text>
+                        }
+                        <br /><br />
                         <strong>Supported path formats:</strong><br />
                         • Local paths: <code>C:\Users\Username\Documents</code><br />
                         • Full network paths: <code>\\server\share\folder</code><br />
@@ -38,9 +59,9 @@
 
                 <MudDivider Class="my-4" />
 
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ScanFolders" 
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ScanItems" 
                         Disabled="@(string.IsNullOrEmpty(SourceFolder))" Class="mb-4">
-                    Scan Folders
+                    @(SelectedMode == "folders" ? "Scan Folders" : "Scan Files & Folders")
                 </MudButton>
 
                 @if (IsLoading)
@@ -48,9 +69,9 @@
                     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
                 }
 
-
-                @if (Folders != null && Folders.Any())
+                @if (SelectedMode == "folders" && Folders != null && Folders.Any())
                 {
+                    <!-- Folder Sanitization Rules -->
                     <MudExpansionPanels>
                         <MudExpansionPanel Text="Sanitization Rules" IsInitiallyExpanded="true">
                             <MudList T=bool Dense="true">
@@ -71,6 +92,7 @@
 
                     <MudDivider Class="my-4" />
 
+                    <!-- Folder Preview Table -->
                     <MudPaper Class="pa-4 mb-4">
                         <MudText Typo="Typo.h6" Class="mb-2">Preview Changes</MudText>
                         <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="PreviewChanges" 
@@ -125,6 +147,114 @@
                         </MudButton>
                     </MudPaper>
                 }
+                else if (SelectedMode == "files" && Files != null && Files.Any())
+                {
+                    <!-- File Renaming Options -->
+                    <MudExpansionPanels>
+                        <MudExpansionPanel Text="File Renaming Options" IsInitiallyExpanded="true">
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudCheckBox @bind-Value="@RenameFiles" Color="Color.Primary" Label="Rename Files" />
+                                    <MudText Typo="Typo.caption" Class="ml-6">Parse and rename files to Plex format</MudText>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudCheckBox @bind-Value="@OrganizeFolders" Color="Color.Primary" Label="Organize into Plex Structure" />
+                                    <MudText Typo="Typo.caption" Class="ml-6">Create Movies/TV Shows folder structure</MudText>
+                                </MudItem>
+                                @if (OrganizeFolders)
+                                {
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="TargetBasePath" 
+                                                     Label="Target Base Path (for organization)" 
+                                                     Placeholder="e.g., C:\Media or \\server\plex-media"
+                                                     Variant="Variant.Outlined" 
+                                                     FullWidth="true" />
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+
+                    <MudDivider Class="my-4" />
+
+                    <!-- File Preview Table -->
+                    <MudPaper Class="pa-4 mb-4">
+                        <MudText Typo="Typo.h6" Class="mb-2">Preview Changes</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="PreviewFileChanges" 
+                                  Class="mb-4">
+                            Refresh Preview
+                        </MudButton>
+                        
+                        <MudTable Items="@Files" Dense="true" Hover="true" Bordered="true" Striped="true" 
+                                 Style="max-height: 600px; overflow-y: auto;">
+                            <ColGroup>
+                                <col style="width: 40px;" />
+                                <col style="width: 100px;" />
+                                <col style="width: 30%;" />
+                                <col style="width: 30%;" />
+                                <col style="width: 80px;" />
+                                <col style="width: 60px;" />
+                            </ColGroup>
+                            <HeaderContent>
+                                <MudTh>
+                                    <MudCheckBox @bind-Value="@SelectAllFiles" Color="Color.Primary" />
+                                </MudTh>
+                                <MudTh>Type</MudTh>
+                                <MudTh>Original Name</MudTh>
+                                <MudTh>New Name</MudTh>
+                                <MudTh>Change</MudTh>
+                                <MudTh>Edit</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="">
+                                    <MudCheckBox @bind-Value="@context.IsSelected" Color="Color.Primary" />
+                                </MudTd>
+                                <MudTd DataLabel="Type">
+                                    @if (context.MediaType == MediaType.Movie)
+                                    {
+                                        <MudChip T=string Color="Color.Primary" Size="Size.Small">Movie</MudChip>
+                                    }
+                                    else if (context.MediaType == MediaType.TvShow)
+                                    {
+                                        <MudChip T=string Color="Color.Secondary" Size="Size.Small">TV Show</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T=string Color="Color.Default" Size="Size.Small">Unknown</MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Original" Style="word-break: break-all; white-space: normal;">
+                                    @context.Name
+                                </MudTd>
+                                <MudTd DataLabel="New" Style="word-break: break-all; white-space: normal;">
+                                    @(string.IsNullOrEmpty(context.NewName) ? context.Name : context.NewName)
+                                </MudTd>
+                                <MudTd DataLabel="Change">
+                                    @if (context.HasChanges)
+                                    {
+                                        <MudChip T=bool Color="Color.Success" Size="Size.Small">Yes</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T=bool Color="Color.Default" Size="Size.Small">No</MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                 Size="Size.Small" 
+                                                 OnClick="@(() => EditFileMetadata(context))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudPaper>
+
+                    <MudPaper Class="d-flex justify-end pa-4 mt-2" Elevation="0">
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ApplyFileChanges" 
+                                 Disabled="@(!Files.Any(f => f.IsSelected && (f.HasChanges || OrganizeFolders)))">
+                            Apply Changes
+                        </MudButton>
+                    </MudPaper>
+                }
             </MudPaper>
         </MudItem>
     </MudGrid>
@@ -132,10 +262,21 @@
 
 @code {
     private string SourceFolder { get; set; } = string.Empty;
+    private string SelectedMode { get; set; } = "folders";
+    private string TargetBasePath { get; set; } = string.Empty;
+    
+    // Folder-related properties
     private List<FolderItem> Folders { get; set; } = new List<FolderItem>();
     private List<FolderSanitizationRule> SanitizationRules { get; set; } = new List<FolderSanitizationRule>();
+    
+    // File-related properties
+    private List<FileItem> Files { get; set; } = new List<FileItem>();
+    private bool RenameFiles { get; set; } = true;
+    private bool OrganizeFolders { get; set; } = false;
+    
     private bool IsLoading { get; set; } = false;
     private bool _selectAll = true;
+    private bool _selectAllFiles = true;
 
     protected override void OnInitialized()
     {
@@ -158,6 +299,22 @@
         }
     }
 
+    private bool SelectAllFiles
+    {
+        get => _selectAllFiles;
+        set
+        {
+            if (_selectAllFiles != value)
+            {
+                _selectAllFiles = value;
+                foreach (var file in Files)
+                {
+                    file.IsSelected = value;
+                }
+            }
+        }
+    }
+
     private void ToggleRule(int index, bool isChecked)
     {
         FolderSanitizerService.ToggleRule(index, isChecked);
@@ -168,7 +325,7 @@
         }
     }
     
-    private async Task ScanFolders()
+    private async Task ScanItems()
     {
         if (string.IsNullOrEmpty(SourceFolder))
         {
@@ -179,6 +336,31 @@
         try
         {
             IsLoading = true;
+            
+            if (SelectedMode == "folders")
+            {
+                await ScanFolders();
+            }
+            else
+            {
+                await ScanFiles();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error scanning items: {ex.Message}");
+            Toast.Add($"Error scanning: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task ScanFolders()
+    {
+        try
+        {
             Folders = await FolderSanitizerService.GetFoldersAsync(SourceFolder);
             
             if (!Folders.Any())
@@ -187,7 +369,6 @@
             }
             else
             {
-                // Use the proper method in the FolderSanitizerService to check if path exists
                 bool pathExists = await FolderSanitizerService.PathExistsAsync(SourceFolder);
                 
                 if (!pathExists)
@@ -200,8 +381,6 @@
                 }
                 
                 SelectAll = true;
-                
-                // Automatically preview changes
                 await PreviewChanges();
             }
         }
@@ -209,27 +388,33 @@
         {
             Debug.WriteLine($"Mapped drive not supported: {ex.Message}");
             Toast.Add(ex.Message, Severity.Error);
-            
-            // Show a more detailed explanation in a second toast
             Toast.Add("Please use full network paths (e.g., \\\\server\\share) or local paths (e.g., C:\\folder) instead.", Severity.Info);
-            
-            // Clear the source folder field
             SourceFolder = string.Empty;
+        }
+    }
+
+    private async Task ScanFiles()
+    {
+        try
+        {
+            Files = (await RenameService.AnalyzeFilesAsync(SourceFolder)).ToList();
+            
+            if (!Files.Any())
+            {
+                Toast.Add("No media files found in the selected directory", Severity.Info);
+            }
+            else
+            {
+                Toast.Add($"Found {Files.Count} media files in {SourceFolder}", Severity.Success);
+                SelectAllFiles = true;
+                await PreviewFileChanges();
+            }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error scanning folders: {ex.Message}");
-            Toast.Add($"Error scanning folders: {ex.Message}", Severity.Error);
-            
-            // If folders were not loaded, initialize with empty list
-            if (Folders == null)
-            {
-                Folders = new List<FolderItem>();
-            }
-        }
-        finally
-        {
-            IsLoading = false;
+            Debug.WriteLine($"Error scanning files: {ex.Message}");
+            Toast.Add($"Error scanning files: {ex.Message}", Severity.Error);
+            Files = new List<FileItem>();
         }
     }
 
@@ -266,6 +451,43 @@
         }
     }
 
+    private async Task PreviewFileChanges()
+    {
+        if (!Files.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            IsLoading = true;
+            
+            foreach (var file in Files)
+            {
+                await RenameService.GenerateNewNameAsync(file);
+            }
+            
+            int changesCount = Files.Count(f => f.HasChanges);
+            if (changesCount > 0)
+            {
+                Toast.Add($"Preview: {changesCount} files will be renamed", Severity.Info);
+            }
+            else
+            {
+                Toast.Add("No changes needed for these files", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error previewing file changes: {ex.Message}");
+            Toast.Add("Error generating file preview", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
     private async Task ApplySanitization()
     {
         var foldersToRename = Folders.Where(f => f.IsSelected && f.HasChanges).ToList();
@@ -276,38 +498,11 @@
             return;
         }
 
-        // Check if we're in demo mode
-        bool isDemoMode = false;
-        try
-        {
-            // Use reflection to call the private method in the service
-            var service = FolderSanitizerService as FolderSanitizerService;
-            var method = service.GetType().GetMethod("CheckPathExists", 
-                                                    System.Reflection.BindingFlags.NonPublic | 
-                                                    System.Reflection.BindingFlags.Instance);
-            if (method != null && foldersToRename.Any())
-            {
-                isDemoMode = !(bool)method.Invoke(service, new object[] { foldersToRename.First().FullPath });
-            }
-            else
-            {
-                // Fallback if reflection fails
-                isDemoMode = !Directory.Exists(SourceFolder);
-            }
-        }
-        catch
-        {
-            // Fallback
-            isDemoMode = !Directory.Exists(SourceFolder);
-        }
-        
-        string confirmationMessage = isDemoMode
-            ? $"DEMO MODE: This will simulate renaming {foldersToRename.Count} folders."
-            : $"Are you sure you want to rename {foldersToRename.Count} folders in {SourceFolder}? This cannot be undone.";
+        string confirmationMessage = $"Are you sure you want to rename {foldersToRename.Count} folders? This cannot be undone.";
 
         var parameters = new DialogParameters();
         parameters.Add("ContentText", confirmationMessage);
-        parameters.Add("ButtonText", isDemoMode ? "Simulate Rename" : "Rename");
+        parameters.Add("ButtonText", "Rename");
         parameters.Add("Color", Color.Error);
 
         var dialog = await DialogService.ShowAsync<DialogConfirmation>("Confirm Renaming", parameters);
@@ -322,22 +517,13 @@
 
                 if (success)
                 {
-                    if (isDemoMode)
-                    {
-                        Toast.Add("Rename simulation completed successfully", Severity.Success);
-                    }
-                    else
-                    {
-                        Toast.Add("Folders renamed successfully", Severity.Success);
-                    }
-                    
-                    // Refresh the folder list, which will be either real folders or the demo data
+                    Toast.Add("Folders renamed successfully", Severity.Success);
                     await ScanFolders();
                 }
                 else
                 {
                     Toast.Add("Some folders could not be renamed. Check permissions or network connectivity.", Severity.Warning);
-                    await ScanFolders(); // Refresh folder list
+                    await ScanFolders();
                 }
             }
             catch (Exception ex)
@@ -352,26 +538,77 @@
         }
     }
 
-    private string GetChangedPart(FolderItem folder)
+    private async Task ApplyFileChanges()
     {
-        if (string.IsNullOrEmpty(folder.Name) || string.IsNullOrEmpty(folder.NewName))
-            return string.Empty;
+        var filesToProcess = Files.Where(f => f.IsSelected).ToList();
         
-        // Find the differences between original and new name
-        int i = 0;
-        while (i < folder.Name.Length && i < folder.NewName.Length && folder.Name[i] == folder.NewName[i])
-            i++;
-        
-        int j = 0;
-        while (j < folder.Name.Length - i && j < folder.NewName.Length - i && 
-               folder.Name[folder.Name.Length - 1 - j] == folder.NewName[folder.NewName.Length - 1 - j])
-            j++;
-        
-        // If there are no changes, return empty string
-        if (i >= folder.NewName.Length - j)
-            return string.Empty;
-        
-        // Return the changed part
-        return folder.NewName.Substring(i, folder.NewName.Length - i - j);
+        if (!filesToProcess.Any())
+        {
+            Toast.Add("No files selected for processing", Severity.Warning);
+            return;
+        }
+
+        string action = OrganizeFolders ? "organize and rename" : "rename";
+        string confirmationMessage = $"Are you sure you want to {action} {filesToProcess.Count} files? This cannot be undone.";
+
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", confirmationMessage);
+        parameters.Add("ButtonText", OrganizeFolders ? "Organize" : "Rename");
+        parameters.Add("Color", Color.Error);
+
+        var dialog = await DialogService.ShowAsync<DialogConfirmation>("Confirm File Processing", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                IsLoading = true;
+                bool success = false;
+
+                if (OrganizeFolders && !string.IsNullOrEmpty(TargetBasePath))
+                {
+                    success = await RenameService.OrganizeFoldersAsync(filesToProcess, TargetBasePath);
+                }
+                else if (RenameFiles)
+                {
+                    success = await RenameService.ApplyRenamingAsync(filesToProcess);
+                }
+
+                if (success)
+                {
+                    Toast.Add($"Files {action}d successfully", Severity.Success);
+                    await ScanFiles();
+                }
+                else
+                {
+                    Toast.Add($"Some files could not be {action}d. Check permissions or network connectivity.", Severity.Warning);
+                    await ScanFiles();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error applying file changes: {ex.Message}");
+                Toast.Add($"Error processing files: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private async Task EditFileMetadata(FileItem fileItem)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("FileInfo", fileItem);
+
+        var dialog = await DialogService.ShowAsync<DialogEditFileName>("Edit File Metadata", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            StateHasChanged();
+        }
     }
 }
