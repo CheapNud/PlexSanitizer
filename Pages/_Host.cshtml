@@ -1,0 +1,10 @@
+@page "/"
+@namespace PlexSanitizer.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = "_Layout";
+}
+
+<component type="typeof(PlexSanitizer.Components.Routes)" render-mode="ServerPrerendered" />
+
+<script src="_framework/blazor.server.js"></script>
