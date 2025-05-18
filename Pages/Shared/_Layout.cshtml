@@ -1,20 +1,18 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PlexSanitizer</title>
-    <base href="/" />
+    <base href="~/" />
 
     <!-- MudBlazor CSS -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
 
-    <!-- Your custom CSS -->
-    <link rel="stylesheet" href="css/app.css" />
-    <link rel="icon" href="data:,">
+    <!-- Custom CSS -->
+    <link href="css/app.css" rel="stylesheet" />
 
-    <!-- Blazor Server specific styling -->
     <style>
         #blazor-error-ui {
             background: lightyellow;
@@ -36,14 +34,8 @@
             }
     </style>
 </head>
-
 <body>
-    <div id="app">
-        <div style="position: absolute; top: 30vh; width: 100%; text-align: center;">
-            <h1>Loading PlexSanitizer...</h1>
-            <p>Please wait while the application loads.</p>
-        </div>
-    </div>
+    @RenderBody()
 
     <div id="blazor-error-ui">
         <environment include="Staging,Production">
@@ -56,17 +48,7 @@
         <a class="dismiss">🗙</a>
     </div>
 
-    <!-- Blazor Server Scripts (NOT WebAssembly) -->
-    <script src="_framework/blazor.server.js"></script>
     <!-- MudBlazor JavaScript -->
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
-
-    <!-- Add component -->
-    <script>
-        // Ensure Blazor components are properly loaded
-        Blazor.start().then(() => {
-            console.log('Blazor Server started successfully');
-        });
-    </script>
 </body>
 </html>

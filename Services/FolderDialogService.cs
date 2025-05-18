@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using System.Diagnostics;
 using MudBlazor;
-using PlexSanitizer.Components.Shared;
+using System;
 
 namespace PlexSanitizer.Services
 {
@@ -22,7 +22,7 @@ namespace PlexSanitizer.Services
                 parameters.Add("ButtonText", "Select");
                 parameters.Add("Color", MudBlazor.Color.Primary);
 
-                var dialog = await dialogService.ShowAsync<DialogFolderPicker>("Select Folder", parameters);
+                var dialog = await dialogService.ShowAsync<Components.Shared.DialogFolderPicker>("Select Folder", parameters);
                 var result = await dialog.Result;
 
                 if (!result.Canceled && result.Data is string folderPath)

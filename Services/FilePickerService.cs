@@ -1,38 +1,39 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using Microsoft.Maui.Controls;
+using Avalonia.Platform.Storage;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia;
 
 namespace PlexSanitizer.Services
 {
-
     public class FilePickerService : IFilePickerService
     {
         public async Task<string> PickFolderAsync()
         {
             try
             {
-                // Since MAUI doesn't have a built-in folder picker, we'll use a simple input dialog
-                string result = await Application.Current.Windows[0].Page.DisplayPromptAsync(
-                    "Select Folder",
-                    "Enter the full path to the folder:",
-                    "OK",
-                    "Cancel",
-                    "e.g., C:\\Users\\Username\\Documents or Z:\\Network\\Path",
-                    -1,
-                    Keyboard.Text);
-
-                if (!string.IsNullOrEmpty(result))
+                // Get the main window
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                    && desktop.MainWindow?.StorageProvider is { } storageProvider)
                 {
-                    // Return the entered path
-                    return result.Trim();
+                    var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+                    {
+                        Title = "Select Folder",
+                        AllowMultiple = false
+                    });
+
+                    if (result.Count > 0)
+                    {
+                        return result[0].Path.LocalPath;
+                    }
                 }
 
                 return null; // User cancelled
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error with folder input dialog: {ex.Message}");
+                Debug.WriteLine($"Error with folder picker: {ex.Message}");
                 return null;
             }
         }
