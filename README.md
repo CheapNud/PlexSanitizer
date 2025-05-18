@@ -6,7 +6,7 @@ Built with **Blazor Server**, **MudBlazor**, **Avalonia**, and **Photino**.
 
 ## ⚠️ Warning
 
-**This software is experimental.** Always test on a small subset of files first. The author is not responsible for any data loss or damage that may occur. Use at your own risk.
+**This software is experimental. The Ruleset is still WIP** Always test on a small subset of files first. The author is not responsible for any data loss or damage that may occur. Use at your own risk.
 
 **Backup your media files before use.**
 
