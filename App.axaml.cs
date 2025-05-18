@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -95,6 +96,12 @@ public partial class App : Application
 
     private void ConfigureServices(IServiceCollection services)
     {
+        // Configure Razor Pages to look in the Components directory
+        services.Configure<Microsoft.AspNetCore.Mvc.RazorPages.RazorPagesOptions>(options =>
+        {
+            options.RootDirectory = "/Components";
+        });
+
         // Register MudBlazor services
         services.AddMudServices(config =>
         {

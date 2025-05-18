@@ -57,7 +57,7 @@ public partial class MainWindow : Window
                     // Handle messages from JavaScript if needed
                     System.Diagnostics.Debug.WriteLine($"Received message: {message}");
                 })
-                .Load(App.BlazorUrl); // Correct method name
+                .Load(App.BlazorUrl);
 
             // Set up event handlers with correct API - register AFTER creating window
             _photinoWindow.WindowClosing += (sender, args) =>

@@ -6,7 +6,6 @@
 
 @inject IFolderSanitizerService FolderSanitizerService
 @inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Plex Folder Sanitizer</MudText>
@@ -173,7 +172,7 @@
     {
         if (string.IsNullOrEmpty(SourceFolder))
         {
-            Snackbar.Add("Please select a source folder", Severity.Warning);
+            Toast.Add("Please select a source folder", Severity.Warning);
             return;
         }
 
@@ -184,7 +183,7 @@
             
             if (!Folders.Any())
             {
-                Snackbar.Add("No folders found in the selected directory", Severity.Info);
+                Toast.Add("No folders found in the selected directory", Severity.Info);
             }
             else
             {
@@ -193,11 +192,11 @@
                 
                 if (!pathExists)
                 {
-                    Snackbar.Add($"Path '{SourceFolder}' not accessible. Using example data for demonstration.", Severity.Warning);
+                    Toast.Add($"Path '{SourceFolder}' not accessible. Using example data for demonstration.", Severity.Warning);
                 }
                 else 
                 {
-                    Snackbar.Add($"Found {Folders.Count} folders in {SourceFolder}", Severity.Success);
+                    Toast.Add($"Found {Folders.Count} folders in {SourceFolder}", Severity.Success);
                 }
                 
                 SelectAll = true;
@@ -209,10 +208,10 @@
         catch (NotSupportedException ex)
         {
             Debug.WriteLine($"Mapped drive not supported: {ex.Message}");
-            Snackbar.Add(ex.Message, Severity.Error);
+            Toast.Add(ex.Message, Severity.Error);
             
-            // Show a more detailed explanation in a second snackbar
-            Snackbar.Add("Please use full network paths (e.g., \\\\server\\share) or local paths (e.g., C:\\folder) instead.", Severity.Info);
+            // Show a more detailed explanation in a second toast
+            Toast.Add("Please use full network paths (e.g., \\\\server\\share) or local paths (e.g., C:\\folder) instead.", Severity.Info);
             
             // Clear the source folder field
             SourceFolder = string.Empty;
@@ -220,7 +219,7 @@
         catch (Exception ex)
         {
             Debug.WriteLine($"Error scanning folders: {ex.Message}");
-            Snackbar.Add($"Error scanning folders: {ex.Message}", Severity.Error);
+            Toast.Add($"Error scanning folders: {ex.Message}", Severity.Error);
             
             // If folders were not loaded, initialize with empty list
             if (Folders == null)
@@ -249,17 +248,17 @@
             int changesCount = Folders.Count(f => f.HasChanges);
             if (changesCount > 0)
             {
-                Snackbar.Add($"Preview: {changesCount} folders will be renamed", Severity.Info);
+                Toast.Add($"Preview: {changesCount} folders will be renamed", Severity.Info);
             }
             else
             {
-                Snackbar.Add("No changes needed for these folders", Severity.Info);
+                Toast.Add("No changes needed for these folders", Severity.Info);
             }
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error previewing changes: {ex.Message}");
-            Snackbar.Add("Error generating preview", Severity.Error);
+            Toast.Add("Error generating preview", Severity.Error);
         }
         finally
         {
@@ -273,7 +272,7 @@
         
         if (!foldersToRename.Any())
         {
-            Snackbar.Add("No folders selected for renaming", Severity.Warning);
+            Toast.Add("No folders selected for renaming", Severity.Warning);
             return;
         }
 
@@ -325,11 +324,11 @@
                 {
                     if (isDemoMode)
                     {
-                        Snackbar.Add("Rename simulation completed successfully", Severity.Success);
+                        Toast.Add("Rename simulation completed successfully", Severity.Success);
                     }
                     else
                     {
-                        Snackbar.Add("Folders renamed successfully", Severity.Success);
+                        Toast.Add("Folders renamed successfully", Severity.Success);
                     }
                     
                     // Refresh the folder list, which will be either real folders or the demo data
@@ -337,14 +336,14 @@
                 }
                 else
                 {
-                    Snackbar.Add("Some folders could not be renamed. Check permissions or network connectivity.", Severity.Warning);
+                    Toast.Add("Some folders could not be renamed. Check permissions or network connectivity.", Severity.Warning);
                     await ScanFolders(); // Refresh folder list
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error applying sanitization: {ex.Message}");
-                Snackbar.Add($"Error renaming folders: {ex.Message}", Severity.Error);
+                Toast.Add($"Error renaming folders: {ex.Message}", Severity.Error);
             }
             finally
             {
