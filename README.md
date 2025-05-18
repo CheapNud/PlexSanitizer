@@ -10,6 +10,8 @@ Built with **Blazor Server**, **MudBlazor**, **Avalonia**, and **Photino**.
 
 **Backup your media files before use.**
 
+![Screenshot 2025-05-18 155549](https://github.com/user-attachments/assets/1e519c87-1695-441d-b422-2cbfca2f9ea8)
+
 ## Features
 
 - **Folder Sanitizer**: Clean folder names with configurable rules
