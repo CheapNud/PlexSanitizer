@@ -1,7 +1,7 @@
-﻿using System.Threading.Tasks;
-using System.Diagnostics;
-using MudBlazor;
+﻿using MudBlazor;
 using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace PlexSanitizer.Services
 {

@@ -1,8 +1,7 @@
 ﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 
 namespace PlexSanitizer.Services
 {

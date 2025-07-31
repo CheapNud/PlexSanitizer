@@ -1,9 +1,9 @@
-﻿using System;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using Avalonia.Platform.Storage;
+﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia;
+using Avalonia.Platform.Storage;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace PlexSanitizer.Services
 {
