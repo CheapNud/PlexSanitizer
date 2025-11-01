@@ -47,21 +47,45 @@ jobs:
         ADDITIONS=$(jq -r '.additions' pr-details.json)
         DELETIONS=$(jq -r '.deletions' pr-details.json)
         CHANGED_FILES=$(jq -r '.changedFiles' pr-details.json)
-        PR_DIFF=$(cat pr-diff.txt)
 
-        # Create the review prompt
-        cat > review-request.json <<EOF
-        {
-          "model": "claude-sonnet-4-5-20250929",
-          "max_tokens": 4096,
-          "messages": [
-            {
-              "role": "user",
-              "content": "You are an expert code reviewer for C#, .NET, Blazor, and Avalonia projects. Review this pull request and provide:\n\n1. **Summary**: Brief overview of changes\n2. **Code Quality**: Assessment of code organization, patterns, and best practices\n3. **Potential Issues**: Security concerns, bugs, performance issues, or breaking changes\n4. **Recommendations**: Suggestions for improvements\n5. **Verdict**: APPROVE, REQUEST CHANGES, or COMMENT\n\nBe constructive, concise, and focus on important issues. Use markdown formatting.\n\n---\n\n**PR Title**: ${PR_TITLE}\n\n**Description**: ${PR_BODY}\n\n**Stats**: +${ADDITIONS} / -${DELETIONS} lines across ${CHANGED_FILES} files\n\n**Diff**:\n\`\`\`diff\n${PR_DIFF}\n\`\`\`"
-            }
-          ]
-        }
-        EOF
+        # Build the review prompt
+        PROMPT="You are an expert code reviewer for C#, .NET, Blazor, and Avalonia projects. Review this pull request and provide:
+
+        1. **Summary**: Brief overview of changes
+        2. **Code Quality**: Assessment of code organization, patterns, and best practices
+        3. **Potential Issues**: Security concerns, bugs, performance issues, or breaking changes
+        4. **Recommendations**: Suggestions for improvements
+        5. **Verdict**: APPROVE, REQUEST CHANGES, or COMMENT
+
+        Be constructive, concise, and focus on important issues. Use markdown formatting.
+
+        ---
+
+        **PR Title**: ${PR_TITLE}
+
+        **Description**: ${PR_BODY}
+
+        **Stats**: +${ADDITIONS} / -${DELETIONS} lines across ${CHANGED_FILES} files
+
+        **Diff**:
+        \`\`\`diff
+        $(cat pr-diff.txt)
+        \`\`\`"
+
+        # Create JSON payload using jq to properly escape everything
+        jq -n \
+          --arg model "claude-sonnet-4-5-20250929" \
+          --arg prompt "$PROMPT" \
+          '{
+            model: $model,
+            max_tokens: 4096,
+            messages: [
+              {
+                role: "user",
+                content: $prompt
+              }
+            ]
+          }' > review-request.json
 
         # Call Claude API
         RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
@@ -70,8 +94,18 @@ jobs:
           -H "content-type: application/json" \
           -d @review-request.json)
 
+        # Debug: save full response
+        echo "$RESPONSE" > claude-response.json
+
         # Extract the review text
-        REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text')
+        REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // "Error: No review generated"')
+
+        # Check if there was an error
+        ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+        if [ ! -z "$ERROR" ]; then
+          echo "API Error: $ERROR"
+          REVIEW="**Error calling Claude API**: $ERROR"
+        fi
 
         # Save review to file for next step
         echo "$REVIEW" > claude-review.md
@@ -117,4 +151,5 @@ jobs:
           pr-details.json
           pr-diff.txt
           claude-review.md
+          claude-response.json
         retention-days: 30
