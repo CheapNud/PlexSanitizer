@@ -39,7 +39,7 @@
     </style>
 </head>
 <body>
-    <component type="typeof(PlexSanitizer.Components.Routes)" render-mode="ServerPrerendered" />
+    <component type="typeof(PlexSanitizer.Components.App)" render-mode="ServerPrerendered" />
 
     <div id="blazor-error-ui">
         An error has occurred. This application may no longer respond until reloaded.
@@ -49,5 +49,13 @@
 
     <script src="_framework/blazor.server.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_content/CheapAvaloniaBlazor/cheap-blazor-interop.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.cheapBlazor) {
+                window.cheapBlazor.initialize();
+            }
+        });
+    </script>
 </body>
 </html>
