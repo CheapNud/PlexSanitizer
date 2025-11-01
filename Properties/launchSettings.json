@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "PlexSanitizer": {
+    "CheapPlexSanitizer": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

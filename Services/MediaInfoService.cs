@@ -1,11 +1,11 @@
-﻿using PlexSanitizer.Models;
+﻿using CheapPlexSanitizer.Models;
 using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace PlexSanitizer.Services
+namespace CheapPlexSanitizer.Services
 {
     public class MediaInfoService : IMediaInfoService
     {

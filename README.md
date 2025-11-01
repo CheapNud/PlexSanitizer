@@ -1,8 +1,8 @@
-﻿# PlexSanitizer
+﻿# CheapPlexSanitizer
 
 A cross-platform desktop application for cleaning up media files and folders for Plex Media Server.
 
-Built with **Blazor Server**, **MudBlazor**, **Avalonia**, and **Photino**.
+Built with **Blazor Server**, **MudBlazor**, and **CheapAvaloniaBlazor**.
 
 ## ⚠️ Warning
 
@@ -22,7 +22,7 @@ Built with **Blazor Server**, **MudBlazor**, **Avalonia**, and **Photino**.
 ## Usage
 
 ### Requirements
-- .NET 8.0 or later
+- .NET 10.0 or later
 
 ### Running
 ```bash
