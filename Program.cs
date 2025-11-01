@@ -32,7 +32,7 @@ internal sealed class Program
         builder.Services.AddSingleton<IFolderSanitizerService, FolderSanitizerService>();
         builder.Services.AddSingleton<IMetadataService, MetadataService>();
 
-        // Add HttpClient for any API calls
+        // Add HttpClient for API calls
         builder.Services.AddHttpClient();
 
         // Run the application
