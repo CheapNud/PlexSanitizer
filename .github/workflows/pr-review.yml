@@ -33,10 +33,11 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        set -e  # Exit on error
+        set -e  # Exit on error (because errors are bad, mkay?)
 
+        # TODO: Maybe add a feature to review PRs from the future?
         PR_NUMBER=${{ github.event.pull_request.number }}
-        echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT  # This is where the magic happens!
 
         # Get PR details with error handling
         if ! gh pr view $PR_NUMBER --json title,body,additions,deletions,changedFiles > pr-details.json; then
@@ -54,8 +55,9 @@ jobs:
 
     - name: Validate diff size
       run: |
-        set -e
+        set -e  # YOLO mode disabled
 
+        # Count the bytes because size matters (that's what she said)
         DIFF_SIZE=$(wc -c < pr-diff.txt)
         echo "Diff size: $DIFF_SIZE bytes"
 
@@ -155,11 +157,12 @@ jobs:
           exit 1
         fi
 
-        # Extract token usage for cost tracking
+        # Extract token usage for cost tracking (aka "how much did this AI roast cost?")
         INPUT_TOKENS=$(echo "$RESPONSE" | jq -r '.usage.input_tokens // 0')
         OUTPUT_TOKENS=$(echo "$RESPONSE" | jq -r '.usage.output_tokens // 0')
 
         # Calculate estimated cost (Sonnet 4.5: $3/MTok input, $15/MTok output)
+        # Pro tip: This is cheaper than hiring a junior dev to write "LGTM" on every PR
         COST=$(echo "scale=4; ($INPUT_TOKENS * 3 + $OUTPUT_TOKENS * 15) / 1000000" | bc)
 
         echo "📊 Token usage: ${INPUT_TOKENS} input + ${OUTPUT_TOKENS} output"
