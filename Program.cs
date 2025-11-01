@@ -37,7 +37,8 @@ internal sealed class Program
         // Add HttpClient for API calls (because we need to talk to the internet)
         builder.Services.AddHttpClient();
 
-        // Run the application
+        // Run the application (let's gooo!)
         builder.RunApp(args);
     }
 }
+
