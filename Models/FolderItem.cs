@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace PlexSanitizer.Models
+namespace CheapPlexSanitizer.Models
 {
     public class FolderItem
     {

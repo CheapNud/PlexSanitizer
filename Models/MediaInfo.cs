@@ -1,4 +1,4 @@
-﻿namespace PlexSanitizer.Models
+﻿namespace CheapPlexSanitizer.Models
 {
     public class MediaInfo
     {

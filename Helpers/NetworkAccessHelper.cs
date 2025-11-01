@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace PlexSanitizer.Services
+namespace CheapPlexSanitizer.Services
 {
     public static class NetworkAccessHelper
     {

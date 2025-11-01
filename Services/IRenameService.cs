@@ -1,8 +1,8 @@
-﻿using PlexSanitizer.Models;
+﻿using CheapPlexSanitizer.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace PlexSanitizer.Services
+namespace CheapPlexSanitizer.Services
 {
     public interface IRenameService
     {

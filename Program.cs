@@ -1,10 +1,10 @@
 using CheapAvaloniaBlazor.Hosting;
 using CheapAvaloniaBlazor.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using PlexSanitizer.Services;
+using CheapPlexSanitizer.Services;
 using System;
 
-namespace PlexSanitizer;
+namespace CheapPlexSanitizer;
 
 internal sealed class Program
 {

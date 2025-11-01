@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.0.11123.170 d18.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36109.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlexSanitizer", "PlexSanitizer.csproj", "{4103F226-A332-4E3E-A911-81677EC1D027}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CheapPlexSanitizer", "CheapPlexSanitizer.csproj", "{4103F226-A332-4E3E-A911-81677EC1D027}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

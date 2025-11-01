@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace PlexSanitizer.Models
+namespace CheapPlexSanitizer.Models
 {
     public class MetadataSearchResult
     {

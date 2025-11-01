@@ -1,4 +1,4 @@
-﻿using PlexSanitizer.Models;
+﻿using CheapPlexSanitizer.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace PlexSanitizer.Services
+namespace CheapPlexSanitizer.Services
 {
     public class MetadataService : IMetadataService
     {

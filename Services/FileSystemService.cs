@@ -1,4 +1,4 @@
-﻿using PlexSanitizer.Models;
+﻿using CheapPlexSanitizer.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace PlexSanitizer.Services;
+namespace CheapPlexSanitizer.Services;
 
 public class FileSystemService : IFileSystemService
 {
