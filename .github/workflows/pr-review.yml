@@ -3,45 +3,85 @@ name: Claude PR Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/**'
 
 permissions:
   pull-requests: write
   contents: read
 
+env:
+  CLAUDE_MODEL: "claude-sonnet-4-5-20250929"
+  MAX_TOKENS: 4096
+  MAX_DIFF_SIZE_BYTES: 100000
+
 jobs:
   claude-review:
     name: AI Code Review
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 2
 
     - name: Get PR details and diff
       id: pr-info
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Get PR number
+        set -e  # Exit on error
+
         PR_NUMBER=${{ github.event.pull_request.number }}
-
-        # Get PR details
-        gh pr view $PR_NUMBER --json title,body,additions,deletions,changedFiles > pr-details.json
-
-        # Get PR diff
-        gh pr diff $PR_NUMBER > pr-diff.txt
-
-        # Create a summary
         echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+        # Get PR details with error handling
+        if ! gh pr view $PR_NUMBER --json title,body,additions,deletions,changedFiles > pr-details.json; then
+          echo "::error::Failed to fetch PR details"
+          exit 1
+        fi
+
+        # Get PR diff with error handling
+        if ! gh pr diff $PR_NUMBER > pr-diff.txt; then
+          echo "::error::Failed to fetch PR diff"
+          exit 1
+        fi
+
+        echo "✅ Successfully fetched PR details and diff"
+
+    - name: Validate diff size
+      run: |
+        set -e
+
+        DIFF_SIZE=$(wc -c < pr-diff.txt)
+        echo "Diff size: $DIFF_SIZE bytes"
+
+        if [ $DIFF_SIZE -gt ${{ env.MAX_DIFF_SIZE_BYTES }} ]; then
+          echo "::error::Diff too large for AI review ($DIFF_SIZE bytes, max ${{ env.MAX_DIFF_SIZE_BYTES }})"
+          echo "::notice::Consider breaking this PR into smaller chunks for better review quality"
+          exit 1
+        fi
+
+        if [ $DIFF_SIZE -eq 0 ]; then
+          echo "::warning::Diff is empty, skipping review"
+          exit 0
+        fi
+
+        echo "✅ Diff size validated"
 
     - name: Review with Claude
       id: claude-review
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
-        # Read PR details and diff
+        set -e
+
+        # Read PR details
         PR_TITLE=$(jq -r '.title' pr-details.json)
         PR_BODY=$(jq -r '.body // "No description provided"' pr-details.json)
         ADDITIONS=$(jq -r '.additions' pr-details.json)
@@ -74,11 +114,12 @@ jobs:
 
         # Create JSON payload using jq to properly escape everything
         jq -n \
-          --arg model "claude-sonnet-4-5-20250929" \
+          --arg model "${{ env.CLAUDE_MODEL }}" \
+          --argjson max_tokens ${{ env.MAX_TOKENS }} \
           --arg prompt "$PROMPT" \
           '{
             model: $model,
-            max_tokens: 4096,
+            max_tokens: $max_tokens,
             messages: [
               {
                 role: "user",
@@ -87,69 +128,132 @@ jobs:
             ]
           }' > review-request.json
 
-        # Call Claude API
-        RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+        # Call Claude API with timeout
+        if ! RESPONSE=$(curl -s --max-time 60 https://api.anthropic.com/v1/messages \
           -H "x-api-key: $ANTHROPIC_API_KEY" \
           -H "anthropic-version: 2023-06-01" \
           -H "content-type: application/json" \
-          -d @review-request.json)
+          -d @review-request.json); then
+          echo "::error::Failed to call Claude API"
+          exit 1
+        fi
 
         # Debug: save full response
         echo "$RESPONSE" > claude-response.json
 
-        # Extract the review text
-        REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // "Error: No review generated"')
-
         # Check if there was an error
         ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
         if [ ! -z "$ERROR" ]; then
-          echo "API Error: $ERROR"
+          echo "::error::Claude API Error: $ERROR"
           REVIEW="**Error calling Claude API**: $ERROR"
+          echo "$REVIEW" > claude-review.md
+          exit 1
         fi
 
-        # Save review to file for next step
+        # Extract the review text
+        REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
+        if [ -z "$REVIEW" ]; then
+          echo "::error::No review content received from Claude"
+          exit 1
+        fi
+
+        # Extract token usage for cost tracking
+        INPUT_TOKENS=$(echo "$RESPONSE" | jq -r '.usage.input_tokens // 0')
+        OUTPUT_TOKENS=$(echo "$RESPONSE" | jq -r '.usage.output_tokens // 0')
+
+        # Calculate estimated cost (Sonnet 4.5: $3/MTok input, $15/MTok output)
+        COST=$(echo "scale=4; ($INPUT_TOKENS * 3 + $OUTPUT_TOKENS * 15) / 1000000" | bc)
+
+        echo "📊 Token usage: ${INPUT_TOKENS} input + ${OUTPUT_TOKENS} output"
+        echo "💰 Estimated cost: \$${COST}"
+
+        # Save review to file
         echo "$REVIEW" > claude-review.md
 
-        # Also save to output (escaped for GitHub Actions)
-        {
-          echo 'REVIEW<<EOF'
-          echo "$REVIEW"
-          echo 'EOF'
-        } >> $GITHUB_OUTPUT
+        # Save metadata
+        echo "INPUT_TOKENS=$INPUT_TOKENS" >> $GITHUB_OUTPUT
+        echo "OUTPUT_TOKENS=$OUTPUT_TOKENS" >> $GITHUB_OUTPUT
+        echo "COST=$COST" >> $GITHUB_OUTPUT
 
-    - name: Post review comment
+        echo "✅ Review completed successfully"
+
+    - name: Find existing review comment
+      id: find-comment
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        set -e
+
         PR_NUMBER=${{ steps.pr-info.outputs.PR_NUMBER }}
 
-        # Create comment body with header
-        cat > comment.md <<'EOF'
-        ## 🤖 Claude AI Code Review
+        # Find existing Claude review comment
+        COMMENT_ID=$(gh pr view $PR_NUMBER --json comments --jq \
+          '.comments[] | select(.author.login == "github-actions[bot]" and (.body | contains("🤖 Claude AI Code Review"))) | .databaseId' \
+          | head -n 1 || echo "")
 
-        EOF
+        if [ ! -z "$COMMENT_ID" ]; then
+          echo "Found existing comment: $COMMENT_ID"
+          echo "COMMENT_ID=$COMMENT_ID" >> $GITHUB_OUTPUT
+          echo "UPDATE_MODE=edit" >> $GITHUB_OUTPUT
+        else
+          echo "No existing comment found, will create new one"
+          echo "UPDATE_MODE=create" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Post or update review comment
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -e
+
+        PR_NUMBER=${{ steps.pr-info.outputs.PR_NUMBER }}
+        COMMENT_ID=${{ steps.find-comment.outputs.COMMENT_ID }}
+        UPDATE_MODE=${{ steps.find-comment.outputs.UPDATE_MODE }}
+        INPUT_TOKENS=${{ steps.claude-review.outputs.INPUT_TOKENS }}
+        OUTPUT_TOKENS=${{ steps.claude-review.outputs.OUTPUT_TOKENS }}
+        COST=${{ steps.claude-review.outputs.COST }}
+
+        # Create comment body
+        cat > comment.md <<'EOF'
+## 🤖 Claude AI Code Review
+
+EOF
 
         # Append the actual review
         cat claude-review.md >> comment.md
 
-        # Add footer
-        cat >> comment.md <<'EOF'
+        # Add footer with metadata
+        cat >> comment.md <<EOF
 
-        ---
-        *Generated by Claude Sonnet 4.5 via GitHub Actions*
-        EOF
+---
+📊 **Tokens**: ${INPUT_TOKENS} input + ${OUTPUT_TOKENS} output | 💰 **Cost**: ~\$${COST}
+*Generated by Claude Sonnet 4.5 via GitHub Actions*
+EOF
 
-        # Post comment to PR
-        gh pr comment $PR_NUMBER --body-file comment.md
+        # Post or update comment
+        if [ "$UPDATE_MODE" = "edit" ]; then
+          echo "Updating existing comment #$COMMENT_ID"
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
+            -f body="$(cat comment.md)"
+          echo "✅ Updated existing review comment"
+        else
+          echo "Creating new comment"
+          gh pr comment $PR_NUMBER --body-file comment.md
+          echo "✅ Posted new review comment"
+        fi
 
     - name: Upload review artifact
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: claude-review
+        name: claude-review-${{ github.event.pull_request.number }}
         path: |
           pr-details.json
           pr-diff.txt
           claude-review.md
           claude-response.json
+          review-request.json
         retention-days: 30
